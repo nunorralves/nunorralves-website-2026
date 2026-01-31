@@ -3,15 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "concurrently \"contentlayer dev\" \"next dev --turbo\"",
+    "build": "contentlayer build && next build --turbo",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "concurrently": "^9.2.1",
+    "contentlayer": "^0.3.4",
+    "date-fns": "^4.1.0",
+    "gray-matter": "^4.0.3",
     "next": "16.1.6",
+    "next-contentlayer": "^0.3.4",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "remark": "^15.0.1",
+    "remark-html": "^16.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
