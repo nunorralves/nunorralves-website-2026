@@ -5,7 +5,8 @@
 ![GitHub stars](https://img.shields.io/github/stars/nunorralves/nunorralves-website-2026)
 ![GitHub downloads](https://img.shields.io/github/downloads/nunorralves/nunorralves-website-2026/total)
 ![GitHub forks](https://img.shields.io/github/forks/nunorralves/nunorralves-website-2026)
-![GPLv3 license](https://img.shields.io/github/license/nunorralves/nunorralves-website-2026)
+![GitHub License](https://img.shields.io/github/license/nunorralves/nunorralves-website-2026)
+
 
 My Personal Website and Blog, showcasing my latest work and content about SW Development, Tutorials, Programming Tips, Management, Electronics, IOT and some others that might be interesting to share.
 
