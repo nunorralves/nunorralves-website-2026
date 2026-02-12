@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import ThemeToggle from "./components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "nunorralves.pt",
@@ -17,16 +16,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body>
-        <Header />
-        <div>
-          <ThemeToggle />
-          <div className='mt-4 bg-code-block-bg text-content p-4 rounded'>
-            Content here
-          </div>
+      <body className='flex flex-col mx-0 min-h-screen'>
+        <div className='flex-1 w-full'>
+          <Header />
+          {children}
+          <Footer />
         </div>
-        {children}
-        <Footer />
       </body>
     </html>
   );

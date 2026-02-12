@@ -10,6 +10,7 @@ export const Post = defineDocumentType(() => ({
     summary: { type: "string", required: false },
     tags: { type: "list", of: { type: "string" }, required: false },
     published: { type: "boolean", required: false },
+    description: { type: "string", required: false },
   },
   computedFields: {
     url: {
