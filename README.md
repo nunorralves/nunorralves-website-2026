@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nuno Alves Website
 
-## Getting Started
+![GitHub repo size](https://img.shields.io/github/repo-size/nunorralves/nunorralves-website-2026)
+![GitHub contributors](https://img.shields.io/github/contributors/nunorralves/nunorralves-website-2026)
+![GitHub stars](https://img.shields.io/github/stars/nunorralves/nunorralves-website-2026)
+![GitHub downloads](https://img.shields.io/github/downloads/nunorralves/nunorralves-website-2026/total)
+![GitHub forks](https://img.shields.io/github/forks/nunorralves/nunorralves-website-2026)
+![GPLv3 license](https://img.shields.io/github/license/nunorralves/nunorralves-website-2026)
 
-First, run the development server:
+My Personal Website and Blog, showcasing my latest work and content about SW Development, Tutorials, Programming Tips, Management, Electronics, IOT and some others that might be interesting to share.
+
+## Prerequisites
+
+Before you begin, ensure you have met the following requirements:
+
+- You have installed Node.JS
+- You have installed npm or yarn
+- You have a Linux / Mac / Windows. Any OS is supported
+
+## Running Locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+$ git clone https://github.com/nunorralves/nunorralves-website-2026.git`
+$ cd nunorralves-website-2026
+$ npm install --legacy-peer-deps
+$ npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## License
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project uses the following license: [GNU GPLv3](https://github.com/nunorralves/nunorralves-website/blob/master/LICENSE.md).
