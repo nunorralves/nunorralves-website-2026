@@ -6,7 +6,7 @@ import Footer from "./components/Footer";
 export const metadata: Metadata = {
   title: "nunorralves.pt",
   description:
-    "nunorralves.pt - Blog about SW Engineering, Management and Electronics",
+    "nunorralves.pt - Blog about SW Engineering, Leadership, Management, Electronics, IoT and more.",
 };
 
 export default function RootLayout({
@@ -16,10 +16,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className='flex flex-col mx-0 min-h-screen'>
+      <body className='flex flex-col mx-0 '>
         <div className='flex-1 w-full'>
           <Header />
-          {children}
+          <div className='main'>
+            <main>{children}</main>
+          </div>
           <Footer />
         </div>
       </body>

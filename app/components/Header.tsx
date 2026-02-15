@@ -3,7 +3,7 @@ import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
   return (
-    <header className='top-0 left-0 px-4 py-4 mx-auto w-5/6'>
+    <header className='header top-0 left-0 px-4 py-4 mx-auto w-5/6'>
       <nav className='nav flex flex-row justify-between items-center'>
         <Link
           href='/'
