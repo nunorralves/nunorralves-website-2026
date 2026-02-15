@@ -12,25 +12,25 @@ export default function Home() {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
         <p className='mb-6 font-normal'>
-          I’m an Engineering Director who likes building useful things, working
+          I’m an Engineering Director who enjoys building useful things, working
           with thoughtful people, and occasionally untangling problems that
-          looked simpler on the whiteboard.
+          looked much simpler on the whiteboard.
+          <br />
           <br />
           Most of my career has been around platform and infrastructure — the
           behind-the-scenes work that (when done well) nobody notices, but
-          everyone benefits from. I’ve worked with teams spread across countries
-          and time zones, and I’m constantly learning how much software is
-          really about people, communication, and good trade-offs.
+          everyone benefits from. Working with people across different places
+          and cultures has reinforced for me that great software comes down to
+          good communication, thoughtful trade-offs, and strong teams. I try to
+          create environments where trust and ownership feel natural and where
+          learning is simply part of the job, shaped by experiences ranging from
+          embedded systems and on prem systems, all the way to cloud platforms.
           <br />
-          I care a lot about creating teams where trust is real, ownership is
-          encouraged, and learning never really stops. My path has taken me from
-          embedded systems and on-prem environments to cloud platforms, which
-          keeps me curious and humble about how things actually work.
           <br />I use this space to jot down ideas, lessons picked up along the
           way, and occasional reflections on engineering, leadership, and other
-          bits that might be useful to someone out there.
+          bits that might be useful to someone walking a similar path.
         </p>
-        <div className='flex items-center gap-2 mb-12'>
+        <div className='flex items-center gap-2 pt-4 mb-12'>
           <a
             href='https://github.com/nunorralves'
             target='_blank'
