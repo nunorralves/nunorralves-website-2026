@@ -1,0 +1,192 @@
+---
+title: Create a Dynamic Sitemap in Next.js
+date: 2020-10-24
+tags: ["javascript", "reactjs", "nextjs", "SEO"]
+spublisheds: true
+description: For improving Search Engine Optimization (SEO), might be needed to add a sitemap or robots.txt file to your Next.js site. Let's create one dynamically.
+---
+
+![Create a Dynamic Sitemap in Next.js](/images/create-dynamic-sitemap-nextjs/cover.jpg)
+
+
+It might be that your site doesn't show on google search, or just some of its pages. It doesn't mean it is not indexed by google, but some pages might be missing on it. In that case, consider adding a sitemap to help Google discover all your website pages. Let's see how we can do it!
+
+## What is a sitemap
+
+A sitemap is a file where you specify your site pages, media, files, their relations and additional information about it.
+You can specify their URLs, last modified date, change frequency and priority for example.
+Search engines search and retrieve information from this file to crawl your site and better index it. You can check more on [sitemaps.org](https://www.sitemaps.org/)
+
+## Sample XML sitemap file
+
+The sitemap protocol format consists of XML tags. All data values in a Sitemap must be entity-escaped. The file itself must be UTF-8 encoded.
+
+It must:
+
+- begin with an opening `<urlset>` tag
+- end with a closing `</urlset>` tag.
+- Specify the namespace (protocol standard) within the `<urlset>` tag.
+- include a `<url>` entry for each URL, as a parent XML tag.
+- include a `<loc>` child entry for each `<url>` parent tag.
+
+All other tags are optional.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+   <url>
+      <loc>http://www.nunorralves.com/</loc>
+      <lastmod>2020-10-24</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.8</priority>
+   </url>
+</urlset>
+```
+
+All URLs in a Sitemap must be from a single host. You can check protocol [here](https://www.sitemaps.org/protocol.html)
+
+## What is robot.txt file
+
+A robots.txt file tells search engine crawlers which pages or files the crawler can or can't request from your site. This is used mainly to avoid overloading your site with requests.
+
+## Sample robot.txt file
+
+Create a static file at `public/robots.txt`. It will define which files can be crawled and where the sitemap is located.
+
+```txt
+User-agent: *
+Sitemap: https://www.nunorralves.pt/sitemap.xml
+```
+
+Simple as that!
+
+## Static vs Dynamic sitemap file
+
+If your site is not frequently updated, you might consider defining and updating this file statically. On other hand, if you update it frequently or you have dozens or even hundreds of pages, you might / should consider doing it dynamically.
+
+## Let's implement a dynamic sitemap.xml file generator
+
+First, let's install a very useful package called [`globby`](https://github.com/sindresorhus/globby). It will allow us to do user-friendly [glob](<https://en.wikipedia.org/wiki/Glob_(programming)>) matching.
+
+```bash
+yarn add globby
+
+# or
+
+npm install globby
+```
+
+Now, let's create our node script for generating sitemap.xml file. Create on root of your project, for example, a folder `scripts` and a file under it called `generate-sitemap.js`. Add the following:
+
+```js
+/* eslint-disable @typescript-eslint/no-var-requires */
+const fs = require("fs");
+
+const globby = require("globby");
+const prettier = require("prettier");
+
+(async () => {
+  const prettierConfig = await prettier.resolveConfig(
+    "../../.prettier.config.js",
+  );
+  const pages = await globby([
+    "src/pages/**/*{.js,.jsx,.ts,.tsx,.mdx}",
+    "!src/pages/_*{.js,.jsx,.ts,.tsx,.mdx}",
+    "!src/pages/api",
+  ]);
+  const sitemap = `
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            ${pages
+              .map((page) => {
+                const path = page
+                  .replace("src/pages", "")
+                  .replace(".jsx", "")
+                  .replace(".tsx", "")
+                  .replace(".mdx", "")
+                  .replace(".js", "")
+                  .replace(".ts", "");
+                const route = path === "/index" ? "" : path;
+                const changeFreq = "<changefreq>weekly</changefreq>";
+                const priority = "<priority>0.8</priority>";
+                return `
+                        <url>
+                            <loc>${`https://www.nunorralves.pt${route}`}</loc>
+                            ${
+                              path === "/index" || path === "/blog"
+                                ? changeFreq
+                                : ""
+                            }
+                            ${path === "/index" ? priority : ""}
+                        </url>
+                    `;
+              })
+              .join("")}
+        </urlset>
+    `;
+
+  const formatted = prettier.format(sitemap, {
+    ...prettierConfig,
+    parser: "html",
+  });
+
+  fs.writeFileSync("public/sitemap.xml", formatted);
+})();
+```
+
+As you can read from above, we use [`globby`](https://github.com/sindresorhus/globby) to define the array of pages path. Then we start generating sitemap.xml according to the template described and on it, iterate over pages, creating respective URL tags. In the end, just format it according to your prettier configurations file and write the generated file to the filesystem under `public` folder.
+
+To complete the implementation, go to your `next.config.js` file and extend webpack definition to run the created script at start:
+
+```js
+module.exports = {
+  (...)
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      require('./scripts/generate-sitemap');
+    }
+
+    return config;
+  }
+  (...)
+};
+```
+
+Nothing else todo!
+
+## Test it!
+
+Just start you server. If you follow this tutorial you should see a new file under `public/sitemap.xml` with something like below:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.nunorralves.pt/about</loc>
+  </url>
+
+  <url>
+    <loc>https://www.nunorralves.pt/blog</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+
+  <url>
+    <loc>https://www.nunorralves.pt</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://www.nunorralves.pt/blog/create-dynamic-sitemap-nextjs</loc>
+  </url>
+
+  <url>
+    <loc
+      >https://www.nunorralves.pt/blog/create-simple-blog-nextjs-markdown</loc
+    >
+  </url>
+</urlset>
+```
+
+And that's it!
+If you like this post, click `Like` button below. You can also share your comments or suggestions with [me](/about).
