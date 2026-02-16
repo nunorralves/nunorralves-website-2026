@@ -14,8 +14,8 @@
   --color-border: #eeeeee;
   /* --color-code-block-bg: #d6d6d6; */
   --color-code-block-bg: #eeeeee;
-  --color-code-inline-bg: #eeeeee;
-  --color-muted: #d6d6d6;
+  --color-code-inline-bg: #e5e5e5;
+  --color-tag: #e5e5e5;
 }
 
 .dark {
@@ -29,7 +29,7 @@
   --color-border: #333333;
   --color-code-block-bg: #2e2e33;
   --color-code-inline-bg: #2e2e33;
-  --color-muted: #787878;
+  --color-tag: #2e2e33;
 }
 
 body {
@@ -69,7 +69,7 @@ body {
   }
 
   .tag {
-    background-color: var(--color-muted);
+    background-color: var(--color-tag);
     color: var(--color-primary);
   }
 }
