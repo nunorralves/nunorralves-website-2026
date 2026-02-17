@@ -3,24 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"contentlayer dev\" \"next dev --turbo\"",
-    "build": "contentlayer build && next build --turbo",
+    "dev": "next dev --turbo",
+    "build": "next build --turbo",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@playwright/test": "^1.58.2",
     "concurrently": "^9.2.1",
-    "contentlayer": "^0.3.4",
     "date-fns": "^4.1.0",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
-    "next-contentlayer": "^0.3.4",
+    "next-mdx-remote": "^6.0.0",
+    "playwright-core": "^1.58.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "rehype-mermaid": "^3.0.0",
     "rehype-pretty-code": "^0.14.1",
-    "remark": "^15.0.1",
-    "remark-html": "^16.0.1",
     "shiki": "^3.22.0"
   },
   "devDependencies": {

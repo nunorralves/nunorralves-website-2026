@@ -1,85 +1,40 @@
-import Image from "app/components/Image";
-import { allPosts } from "contentlayer/generated";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import rehypePrettyCode from "rehype-pretty-code";
+import rehypeMermaid from "rehype-mermaid";
+import { getAllPosts, getPostBySlug } from "lib/posts";
 import { Calendar, Tag } from "lucide-react";
-import { getMDXComponent } from "next-contentlayer/hooks";
-import { MDXComponents } from "mdx/types";
-import Link from "next/link";
 
-// Explicitly type the return type for clarity
-export const generateStaticParams = async (): Promise<{ slug: string }[]> => {
-  const slugs = allPosts.map((post) => ({
-    slug: post._raw.flattenedPath,
-  }));
-  return slugs;
-};
+export async function generateStaticParams() {
+  const posts = getAllPosts();
+  return posts.map((post) => ({ slug: post.slug }));
+}
 
-export const generateMetadata = async ({
+export default async function PostLayout({
   params,
 }: {
-  params: { slug: string };
-}) => {
-  // Resolve params if it's a promise
-  const resolvedParams = await Promise.resolve(params);
-
-  if (!resolvedParams || !resolvedParams.slug) {
-    return { title: "Post Not Found" };
-  }
-
-  const post = allPosts.find(
-    (post) => post._raw.flattenedPath === resolvedParams.slug,
-  );
-  if (!post) {
-    return { title: "Post Not Found" };
-  }
-
-  return { title: post.title };
-};
-
-const PostLayout = async ({ params }: { params: { slug: string } }) => {
-  // Resolve params if it's a promise
-  const resolvedParams = await Promise.resolve(params);
-
-  if (!resolvedParams || !resolvedParams.slug) {
-    return <div>Invalid post slug</div>;
-  }
-
-  const post = allPosts.find(
-    (post) => post._raw.flattenedPath === resolvedParams.slug,
-  );
-
-  if (!post) {
-    return <div>Post not found: {resolvedParams.slug}</div>;
-  }
-
-  // Define your custom MDX components.
-  const mdxComponents: MDXComponents = {
-    // Override the default <a> element to use the next/link component.
-    a: ({ href, children }) => <Link href={href as string}>{children}</Link>,
-    // Add a custom component.
-    Image,
-  };
-
-  // Render MDX content
-  const MDXContent = getMDXComponent(post.body.code);
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params; // ← Await here
+  const post = getPostBySlug(slug);
 
   return (
     <article className='mx-auto w-2/3 py-8'>
       <header className='mb-12'>
-        <h1 className='text-3xl font-bold mb-4'>{post.title}</h1>
+        <h1 className='text-3xl font-bold mb-4'>{post.frontmatter.title}</h1>
 
         <div className='flex flex-wrap items-center gap-4 text-sm text-muted-foreground'>
           <time className='flex items-center gap-1'>
             <Calendar className='w-4 h-4' />
-            {new Date(post.date).toLocaleDateString("en-US", {
+            {new Date(post.frontmatter.date).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
             })}
           </time>
 
-          {post.tags && post.tags.length > 0 && (
+          {post.frontmatter.tags && post.frontmatter.tags.length > 0 && (
             <div className='flex flex-wrap gap-2'>
-              {post.tags.map((tag) => (
+              {post.frontmatter.tags.map((tag) => (
                 <span
                   key={tag}
                   className='flex items-center gap-1 tag px-2 py-0.5 rounded-md'
@@ -93,10 +48,25 @@ const PostLayout = async ({ params }: { params: { slug: string } }) => {
         </div>
       </header>
       <div className='[&>*]:mb-3 [&>*:last-child]:mb-0'>
-        <MDXContent components={mdxComponents} />
+        <MDXRemote
+          source={post.content}
+          options={{
+            mdxOptions: {
+              rehypePlugins: [
+                [
+                  rehypePrettyCode,
+                  {
+                    // theme: "github-dark",
+                    theme: "one-dark-pro",
+                    keepBackground: false,
+                  },
+                ],
+                // rehypeMermaid,
+              ],
+            },
+          }}
+        />
       </div>
     </article>
   );
-};
-
-export default PostLayout;
+}

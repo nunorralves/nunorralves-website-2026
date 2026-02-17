@@ -6,12 +6,7 @@ published: true
 description: Lets create a simple blog listing and navigation using Next.js and Markdown
 ---
 
-<Image
-  src='/images/2020-10-22-nextjs-markdown-blog/cover.jpg'
-  alt='Create Simple Blog with Next.js and Markdown'
-  width={800}
-  height={600}
-/>
+![Create Simple Blog with Next.js and Markdown](/images/2020-10-22-nextjs-markdown-blog/cover.jpg)
 
 In this short tutorial I'll walk you through how you can create an easy and quick (very simple) blog website for publishing your articles using [Next.js](https://nextjs.org/) and [Markdown](https://en.wikipedia.org/wiki/Markdown).
 
@@ -27,31 +22,19 @@ In this short tutorial I'll walk you through how you can create an easy and quic
 
 To create a Next.js application, open the terminal and just run the following command:
 
-
 After, you should have a folder called `nextjs-markdown-blog`.
 
 Execute the following commands
 
-
 And development server starts on port 3000 by default. Open [http://localhost:3000](http://localhost:3000) from your browser and you should see the following:
 
-<Image
-  src='/images/2020-10-22-nextjs-markdown-blog/developmentserver.png'
-  alt='Next.js Development Server Running'
-  width={800}
-  height={400}
-/>
+![Next.js Development Server Running](/images/2020-10-22-nextjs-markdown-blog/developmentserver.png)
 
 If you see the previous window, the starter template page, it means everything went smoothly and we are ready to proceed!
 
 ## Next.js Application folder structure
 
-<Image
-  src='/images/2020-10-22-nextjs-markdown-blog/nextjsfolderstructure.png'
-  alt='Next.js Folder Structure'
-  width={222}
-  height={335}
-/>
+![Folder Structure](/images/2020-10-22-nextjs-markdown-blog/nextjsfolderstructure.png)
 
 You should have the above folder structure. I'll not enter into details about [Next.js](https://nextjs.org/) folder structure and routing since it is not on the scope of this tutorial, but you can check the official documentation [here](https://nextjs.org/).
 
@@ -59,25 +42,17 @@ To keep the simplicity of this article and focus on what is presented, you can d
 
 Also, delete the first line of `_app.js`:
 
-
 That's should do it for now.
 
 ## Starting Blog implementation
 
 Let's start by creating a `site.config.json` file in the root folder, so we have a unique place for website global configuration without hardcoding values on each file. On it, place the following code:
 
-
 Now, go to index.js and type the following code, replacing the existing one:
-
 
 You should now see on [http://localhost:3000](http://localhost:3000):
 
-<Image
-  src='/images/2020-10-22-nextjs-markdown-blog/app1screen.png'
-  alt='First Screen'
-  width={800}
-  height={400}
-/>
+![First Screen](/images/2020-10-22-nextjs-markdown-blog/app1screen.png)
 
 Let's now add a little bit of page customization using layouts, but first, let me briefly explain how [Data Fetching](https://nextjs.org/docs/basic-features/data-fetching) works on [Next.js](https://nextjs.org/):
 
@@ -91,20 +66,13 @@ As stated in the beginning of the article, we can have two types of pre-renderin
 
 Let's then, using Static Generation strategy for our blog, inject previously defined site configurations into the page. Add the following code to `index.js`
 
-
 This should be what we see when we navigate to our index page now:
 
-<Image
-  src='/images/2020-10-22-nextjs-markdown-blog/app2screen.png'
-  alt='Second Screen'
-  width={800}
-  height={400}
-/>
+![Second Screen](/images/2020-10-22-nextjs-markdown-blog/app2screen.png)
 
 ## Adding Blog template components
 
 We will create a new folder in the root of the project called `components`. Inside we will create 3 files `Footer.js`, `Header.js` and `Layout.js`.
-
 
 ```js
 const Footer = () => {
@@ -115,16 +83,16 @@ export default Footer;
 ```
 
 ```js
-import Link from 'next/link';
+import Link from "next/link";
 
 const Header = () => {
   return (
-    <header className="content">
-      <nav className="navigation">
-        <Link href="/" passHref>
+    <header className='content'>
+      <nav className='navigation'>
+        <Link href='/' passHref>
           <a>My Blog</a>
         </Link>
-        <Link href="/about" passHref>
+        <Link href='/about' passHref>
           <a>About</a>
         </Link>
       </nav>
@@ -136,9 +104,9 @@ export default Header;
 ```
 
 ```js
-import Head from 'next/head';
-import Footer from './Footer';
-import Header from './Header';
+import Head from "next/head";
+import Footer from "./Footer";
+import Header from "./Header";
 
 const Layout = ({ children, title, ...props }) => {
   return (
@@ -147,9 +115,9 @@ const Layout = ({ children, title, ...props }) => {
         <title>{title}</title>
         <meta title={title} />
       </Head>
-      <section className="content-wrapper">
+      <section className='content-wrapper'>
         <Header />
-        <div className="content">{children}</div>
+        <div className='content'>{children}</div>
       </section>
 
       <Footer />
@@ -163,7 +131,7 @@ export default Layout;
 Now, adapt `index.js` and create a new page `about.js`:
 
 ```js
-import Layout from '../components/Layout';
+import Layout from "../components/Layout";
 
 const Index = ({ title, description, ...props }) => {
   return (
@@ -178,13 +146,13 @@ const Index = ({ title, description, ...props }) => {
 };
 
 export const getStaticProps = async () => {
-  const siteConfig = await import('../site.config.json');
+  const siteConfig = await import("../site.config.json");
 
   return {
     props: {
       title: siteConfig.title,
-      description: siteConfig.description
-    }
+      description: siteConfig.description,
+    },
   };
 };
 
@@ -192,7 +160,7 @@ export default Index;
 ```
 
 ```js
-import Layout from '../components/Layout';
+import Layout from "../components/Layout";
 
 const About = ({ title, description, ...props }) => {
   return (
@@ -205,28 +173,29 @@ const About = ({ title, description, ...props }) => {
 };
 
 export const getStaticProps = async () => {
-  const siteConfig = await import('../site.config.json');
+  const siteConfig = await import("../site.config.json");
 
   return {
     props: {
       title: siteConfig.title,
-      description: siteConfig.description
-    }
+      description: siteConfig.description,
+    },
   };
 };
 
 export default About;
 ```
 
-This is how our site looks up to now:  
+This is how our site looks up to now:
 
-![Index Screen](/images/create-simple-blog-nextjs-markdown/app3screen.png)
+![Index Screen](/images/2020-10-22-nextjs-markdown-blog/app3screen.png)
 
-![About Screen](/images/create-simple-blog-nextjs-markdown/app4screen.png)
+![About Screen](/images/2020-10-22-nextjs-markdown-blog/app4screen.png)
 
 ## Adding Posts Dynamic Routing and Markdown processing
 
 For this step we will need to install the following additional packages:
+
 - gray-matter: parse front-matter from string or file
 - react-markdown: for rendering markdown in react
 - raw-loader: webpack loader to allow importing files as a String.
@@ -254,7 +223,6 @@ module.exports = {
   },
 };
 ```
-
 
 Now, let's create a dynamic route! For this, we will create a `post` folder under `pages` and a file `[slug].js` under newly created folder `post`. Also create another folder named `posts` at root, where markdown blog posts will be added. Next.js let us add brackets to a page to create these dynamic routes (slugs) and make possible to access what page was called using this slug inside the file.
 
@@ -321,7 +289,6 @@ export const getStaticPaths = async () => {
 };
 
 export default Post;
-
 ```
 
 In `getStaticProps` we retrieve information from `site.config.js` as we've done previously, but now, we also return metadata - using gray-matter to parse it - and markdown data from our blog post markdown file.
@@ -352,7 +319,7 @@ Elit irure adipisicing officia enim ea eiusmod. Ad officia reprehenderit aute fu
 
 If you now navigate to our [post page](http://localhost:3000/post/myfirstpost) you should see
 
-![Post Screen](/images/create-simple-blog-nextjs-markdown/app5screen.png)
+![Post Screen](/images/2020-10-22-nextjs-markdown-blog/app5screen.png)
 
 Let's now complete ou simple blog by creating a new component `PostList.js` under `components` folder for listing our blog posts...
 
@@ -383,6 +350,7 @@ const PostList = ({ posts }) => {
 
 export default PostList;
 ```
+
 ...and updating `index.js` to display it.
 
 ```js
@@ -436,9 +404,7 @@ export default Index;
 
 Create just another markdown post to have more on the list. You should now have on your browser when navigate to index page
 
-![Index List Screen](/images/create-simple-blog-nextjs-markdown/app6screen.png)
+![Index List Screen](/images/2020-10-22-nextjs-markdown-blog/app6screen.png)
 
 And that's finally it! I will leave styling for another post.
-If you prefer you can also check or download source code from [my github](https://github.com/nunorralves/blog-examples-tutorials/tree/main/nextjs-markdown-blog).  
-
-
+If you prefer you can also check or download source code from [my github](https://github.com/nunorralves/blog-examples-tutorials/tree/main/nextjs-markdown-blog).

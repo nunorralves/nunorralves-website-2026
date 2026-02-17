@@ -1,11 +1,9 @@
-import { compareDesc } from "date-fns";
-import { allPosts } from "contentlayer/generated";
 import { PostCard } from "./components/PostCard";
+import { getAllPostsWithContent } from "../lib/posts";
 
-export default function Home() {
-  const posts = allPosts.sort((a, b) =>
-    compareDesc(new Date(a.date), new Date(b.date)),
-  );
+export default async function Home() {
+  const posts = await getAllPostsWithContent();
+  // console.log('Posts:', posts);
 
   return (
     <div className='mx-auto w-2/3 py-8'>
