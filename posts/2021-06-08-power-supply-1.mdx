@@ -1,0 +1,87 @@
+---
+title: How to Build a Bench Power Supply From ATX - Part I
+date: 2021-06-08
+tags: ['electronics', 'atx', 'power supply']
+published: true
+description: In this post, I'll show you how to create a bench power supply from an ATX power source.
+---
+
+<Image
+  src='/images/2021-06-08-power-supply-1/power-supply-panel.jpg'
+  alt='Bench Power Supply'
+  width={800}
+  height={600}
+/>
+
+I needed a bench power supply for testing, fixing, and building my electronics and IOT projects. Despite the fact that I could buy one, I decided to recycle an ATX power source I had stored, and create a new bench power source from it.
+
+For that, I started defining my requirements. I would need:
+- One 3.3V output
+- Two +5V output 
+- One +12V output
+- One -12V output
+- Two USB outputs
+- A variable output (voltage and current), between 1.25-25 Volt and 0-2 Amperes 
+
+With this, I could get any (variable) voltage between 1.25V to 25V and also a combination of any of the fixed ones.
+
+As a requirement, I also want to have a power switch (on/off), a power-on LED (red), a standby LED (green) and another switch for turning on/off the variable output independently. And, as a final touch, a digital multimeter embedded for the variable output.
+
+This is the circuit schematic, with the requirements above
+
+<Image
+  src='/images/2021-06-08-power-supply-1/Schematic.png'
+  alt='Bench Power Supply Schematic'
+  width={800}
+  height={600}
+/>
+
+So, let's get started. I used this ATX, with output voltages and currents identified on it
+
+<Image
+  src='/images/2021-06-08-power-supply-1/atx-power-supply.jpg'
+  alt='ATX Power Supply'
+  width={800}
+  height={600}
+/>
+
+I also designed my front panel, printed it and transfer the design to an acrylic board
+
+<Image
+  src='/images/2021-06-08-power-supply-1/front-panel-design-acrylic-board.jpg'
+  alt='Front Panel acrylic'
+  width={800}
+  height={600}
+/>
+
+Then I drilled it according to the design and glued a new printout. After that, I've applied an acryl base to it
+
+<Image src='/images/2021-06-08-power-supply-1/panel-acrylic-glue.jpg' alt='Acrylic Panel Glued' width={800} height={600} />
+
+<Image src='/images/2021-06-08-power-supply-1/panel-acrylic-varnish.jpg' alt='Acrylic Panel Varnished' width={800} height={600} />
+
+Then... wiring time! Cut the connector from the ATX power source and group wires by output voltages (or colors). I've tried to make groups of 3 so that they could handle the maximum amperage described with no problems
+
+<Image src='/images/2021-06-08-power-supply-1/atx-wires.jpg' alt='ATX Wires' width={800} height={600} />
+
+<Image src='/images/2021-06-08-power-supply-1/atx-wires-grouping.jpg' alt='ATX Wires Grouping' width={800} height={600} />
+
+For the variable section, I've unsoldered Boost Buck converter potentiometers and soldered the new ones with wires, so that they could be attached to the front panel. I've also soldered power input from the ATX and the Digital Multimeter on it
+
+<Image src='/images/2021-06-08-power-supply-1/boost-buck-converter.jpg' alt='Boost Buck Converter' width={800} height={600} />
+
+<Image src='/images/2021-06-08-power-supply-1/boost-buck-converter-wiring.jpg' alt='Boost Buck Converter Wiring' width={800} height={600} />
+
+Finally, we can proceed with power output connectors, USB, Power On and Standby LEDs wiring
+
+<Image src='/images/2021-06-08-power-supply-1/front-panel-wiring.jpg' alt='Front Panel wiring' width={800} height={600} />
+
+<Image src='/images/2021-06-08-power-supply-1/front-panel-led-wiring.jpg' alt='Front Panel LED wiring' width={800} height={600} />
+
+<Image src='/images/2021-06-08-power-supply-1/front-panel-usb-wiring.jpg' alt='Front Panel USB wiring' width={800} height={600} />
+
+This is the final result, after everything attached to the panel, wired and connected
+
+<Image src='/images/2021-06-08-power-supply-1/front-panel-wiring-done.jpg' alt='Front Panel wiring done' width={800} height={600} />
+
+In [Part 2]() of this tutorial, I'll show how to do a suitable case for the bench power supply.
