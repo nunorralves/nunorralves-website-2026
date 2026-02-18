@@ -1,7 +1,7 @@
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
 // import rehypeMermaid from "rehype-mermaid";
-import { getAllPosts, getPostBySlug } from "lib/posts";
+import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
 
 export async function generateStaticParams() {

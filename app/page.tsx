@@ -1,9 +1,10 @@
 import { PostCard } from "./components/PostCard";
-import { getAllPostsMetadataWithSlug } from "../lib/posts";
+import { getAllPostsMetadataWithSlug } from "../lib/helpers";
 import { PostMetadataWithSlug } from "lib/types";
 
 export default async function Home() {
-  const postsMetadataWithSlug: PostMetadataWithSlug[] = getAllPostsMetadataWithSlug();
+  const postsMetadataWithSlug: PostMetadataWithSlug[] =
+    getAllPostsMetadataWithSlug();
   // console.log('Posts:', posts);
 
   return (
