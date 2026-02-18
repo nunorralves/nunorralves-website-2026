@@ -1,8 +1,9 @@
 import { PostCard } from "./components/PostCard";
-import { getAllPostsWithContent } from "../lib/posts";
+import { getAllPostsMetadataWithSlug } from "../lib/posts";
+import { PostMetadataWithSlug } from "lib/types";
 
 export default async function Home() {
-  const posts = await getAllPostsWithContent();
+  const postsMetadataWithSlug: PostMetadataWithSlug[] = getAllPostsMetadataWithSlug();
   // console.log('Posts:', posts);
 
   return (
@@ -117,8 +118,8 @@ export default async function Home() {
             </svg>
           </a>
         </div>
-        {posts.map((post, idx) => (
-          <PostCard key={idx} {...post} />
+        {postsMetadataWithSlug.map((postMetadataWithSlug, idx) => (
+          <PostCard key={idx} {...postMetadataWithSlug} />
         ))}
       </div>
     </div>

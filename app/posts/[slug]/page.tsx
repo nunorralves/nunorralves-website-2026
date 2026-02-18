@@ -1,6 +1,6 @@
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
-import rehypeMermaid from "rehype-mermaid";
+// import rehypeMermaid from "rehype-mermaid";
 import { getAllPosts, getPostBySlug } from "lib/posts";
 import { Calendar, Tag } from "lucide-react";
 
@@ -20,21 +20,21 @@ export default async function PostLayout({
   return (
     <article className='mx-auto w-2/3 py-8'>
       <header className='mb-12'>
-        <h1 className='text-3xl font-bold mb-4'>{post.frontmatter.title}</h1>
+        <h1 className='text-3xl font-bold mb-4'>{post.metadata.title}</h1>
 
         <div className='flex flex-wrap items-center gap-4 text-sm text-muted-foreground'>
           <time className='flex items-center gap-1'>
             <Calendar className='w-4 h-4' />
-            {new Date(post.frontmatter.date).toLocaleDateString("en-US", {
+            {new Date(post.metadata.date).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
             })}
           </time>
 
-          {post.frontmatter.tags && post.frontmatter.tags.length > 0 && (
+          {post.metadata.tags && post.metadata.tags.length > 0 && (
             <div className='flex flex-wrap gap-2'>
-              {post.frontmatter.tags.map((tag) => (
+              {post.metadata.tags.map((tag) => (
                 <span
                   key={tag}
                   className='flex items-center gap-1 tag px-2 py-0.5 rounded-md'
