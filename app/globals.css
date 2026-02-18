@@ -3,7 +3,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Make dark the default theme */
 :root {
+  --color-background: #1d1e20;
+  --color-foreground: #dadadb;
+  --color-primary: #dadadb;
+  --color-secondary: #9b9c9d;
+  --color-tertiary: #414244;
+  --color-content: #c4c4c5;
+  --color-card: #2e2e33;
+  --color-border: #333333;
+  --color-code-block-bg: #2e2e33;
+  --color-code-inline-bg: #2e2e33;
+  --color-tag: #2e2e33;
+  --color-link: #61afef;
+  --color-link-hover: #84c0f5;
+}
+
+.light {
   --color-background: #f5f5f5;
   --color-foreground: #1e1e1e;
   --color-primary: #1e1e1e;
@@ -18,22 +35,6 @@
   --color-tag: #e5e5e5;
   --color-link: #0969da;
   --color-link-hover: #0550ae;
-}
-
-.dark {
-  --color-background: #1d1e20;
-  --color-foreground: #dadadb;
-  --color-primary: #dadadb;
-  --color-secondary: #9b9c9d;
-  --color-tertiary: #414244;
-  --color-content: #c4c4c5;
-  --color-card: #2e2e33;
-  --color-border: #333333;
-  --color-code-block-bg: #2e2e33;
-  --color-code-inline-bg: #2e2e33;
-  --color-tag: #2e2e33;
-  --color-link: #61afef;
-  --color-link-hover: #84c0f5;
 }
 
 body {
@@ -173,18 +174,3 @@ article a:hover,
   border-left: 2px solid rgb(100, 100, 255);
 }
 
-/* CSS for theme switcher */
-/* 
-code[data-theme*=" "],
-code[data-theme*=" "] span {
-  color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
-}
- 
-@media (prefers-color-scheme: dark) {
-  code[data-theme*=" "],
-  code[data-theme*=" "] span {
-    color: var(--shiki-dark);
-    background-color: var(--shiki-dark-bg);
-  }
-} */

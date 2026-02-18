@@ -6,39 +6,39 @@ import { Moon, Sun } from "lucide-react";
 const STORAGE_KEY = "theme";
 
 export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState<boolean | null>(null);
+  const [isLight, setIsLight] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Only initialize state on client side
     const savedTheme = localStorage.getItem(STORAGE_KEY);
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    const initialTheme = savedTheme || (prefersDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", initialTheme === "dark");
-    setIsDark(initialTheme === "dark");
+    const initialTheme = savedTheme || "dark"; // Default to dark if no saved theme
+    document.documentElement.classList.toggle(
+      "light",
+      initialTheme === "light",
+    );
+    if (initialTheme === "light") setIsLight(initialTheme === "light");
   }, []);
 
   const toggleTheme = () => {
-    const currentDark = document.documentElement.classList.contains("dark");
-    const newTheme = currentDark ? "light" : "dark";
-    document.documentElement.classList.toggle("dark", !currentDark);
+    const currentLight = document.documentElement.classList.contains("light");
+    const newTheme = currentLight ? "dark" : "light";
+    document.documentElement.classList.toggle("light", !currentLight);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    setIsDark(!currentDark);
+    setIsLight(!currentLight);
   };
 
   // Render nothing or a placeholder until state is initialized
-  if (isDark === null) {
+  if (isLight === null) {
     return (
       <button id='theme-toggle' onClick={toggleTheme} className='px-4 py-2'>
-        <Sun className='w-6 h-6' />
+        <Moon className='w-6 h-6' />
       </button>
     );
   }
 
   return (
     <button id='theme-toggle' onClick={toggleTheme} className='px-4 py-2'>
-      {isDark ? <Sun className='w-6 h-6' /> : <Moon className='w-6 h-6' />}
+      {isLight ? <Moon className='w-6 h-6' /> : <Sun className='w-6 h-6' />}
     </button>
   );
 }
