@@ -15,7 +15,7 @@ export default async function Home({ searchParams }: HomePageProps) {
   const { page } = await searchParams;
   const currentPage = parseInt(page || "1");
   const postsMetadataWithSlug: PostMetadataWithSlug[] =
-    getAllPostsMetadataWithSlug();
+    await getAllPostsMetadataWithSlug();
 
   const totalPages = Math.ceil(postsMetadataWithSlug.length / POSTS_PER_PAGE);
   const startIndex = (currentPage - 1) * POSTS_PER_PAGE;

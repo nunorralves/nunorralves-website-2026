@@ -5,7 +5,7 @@ import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
 
 export async function generateStaticParams() {
-  const posts = getAllPosts();
+  const posts = await getAllPosts();
   return posts.map((post) => ({ slug: post.slug }));
 }
 
@@ -15,7 +15,7 @@ export default async function PostLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params; // ← Await here
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
 
   return (
     <article className='mx-auto w-2/3 py-8'>

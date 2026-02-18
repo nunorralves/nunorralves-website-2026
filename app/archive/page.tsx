@@ -1,18 +1,25 @@
+import { getPostsGroupedByMonth } from "lib/helpers";
+import { PostMetadataWithSlug } from "lib/types";
+import Link from "next/link";
+
 export default async function archive() {
-  // const postsByMonth = await getPostsGroupedByMonth();
+  const postsByMonth: Map<
+    string,
+    Map<string, PostMetadataWithSlug[]>
+  > = await getPostsGroupedByMonth();
 
   return (
     <div className='mx-auto w-2/3 py-8'>
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Archive</h1>
-        {/* 
-        {Object.keys(postsByMonth).length > 0 ? (
+
+        {postsByMonth.size > 0 ? (
           <div className='space-y-8'>
-            {Object.entries(postsByMonth).map(([year, months]) => (
+            {[...postsByMonth.entries()].map(([year, months]) => (
               <div key={year} className='space-y-4'>
                 <h2 className='text-xl font-semibold'>{year}</h2>
 
-                {Object.entries(months).map(([month, posts]) => (
+                {[...months.entries()].map(([month, posts]) => (
                   <div key={month} className='pl-4 border-l border-border'>
                     <h3 className='text-lg font-medium text-muted-foreground mb-2'>
                       {month} ({posts.length})
@@ -22,7 +29,7 @@ export default async function archive() {
                       {posts.map((post) => (
                         <li key={post.title}>
                           <Link
-                            href={`/posts/${post.url}`}
+                            href={`/posts/${post.slug}`}
                             className='text-foreground hover:text-primary transition-colors'
                           >
                             {post.title}
@@ -49,7 +56,7 @@ export default async function archive() {
               Start writing your first post in content/posts directory.
             </p>
           </div>
-        )} */}
+        )}
       </div>
     </div>
   );
