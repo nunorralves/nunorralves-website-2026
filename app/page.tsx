@@ -1,11 +1,26 @@
 import { PostCard } from "./components/PostCard";
 import { getAllPostsMetadataWithSlug } from "../lib/helpers";
 import { PostMetadataWithSlug } from "lib/types";
+import { Pagination } from "./components/Pagination";
 
-export default async function Home() {
+const POSTS_PER_PAGE = 5;
+
+interface HomePageProps {
+  searchParams: {
+    page?: string;
+  };
+}
+
+export default async function Home({ searchParams }: HomePageProps) {
+  const { page } = await searchParams;
+  const currentPage = parseInt(page || "1");
   const postsMetadataWithSlug: PostMetadataWithSlug[] =
     getAllPostsMetadataWithSlug();
-  // console.log('Posts:', posts);
+
+  const totalPages = Math.ceil(postsMetadataWithSlug.length / POSTS_PER_PAGE);
+  const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+  const endIndex = startIndex + POSTS_PER_PAGE;
+  const paginatedPosts = postsMetadataWithSlug.slice(startIndex, endIndex);
 
   return (
     <div className='mx-auto w-2/3 py-8'>
@@ -119,9 +134,22 @@ export default async function Home() {
             </svg>
           </a>
         </div>
-        {postsMetadataWithSlug.map((postMetadataWithSlug, idx) => (
-          <PostCard key={idx} {...postMetadataWithSlug} />
-        ))}
+
+        {paginatedPosts.length > 0 ? (
+          <>
+            {paginatedPosts.map((postMetadataWithSlug, idx) => (
+              <PostCard key={idx} {...postMetadataWithSlug} />
+            ))}
+
+            {totalPages > 1 && (
+              <Pagination currentPage={currentPage} totalPages={totalPages} />
+            )}
+          </>
+        ) : (
+          <div className='text-center py-12 text-muted-foreground'>
+            <p className='text-lg'>No posts found.</p>
+          </div>
+        )}
       </div>
     </div>
   );
