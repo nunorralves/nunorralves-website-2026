@@ -4,8 +4,8 @@ import { Post } from "lib/posts";
 
 export function PostCard(post: Post) {
   return (
-    <article className='mb-6'>
-      <Link href={`/posts/${post.slug}`} className='block'>
+    <article className=' mb-6'>
+      <Link href={`/posts/${post.slug}`} className='block postcard'>
         <div className='card p-6 border border-border rounded-lg hover:shadow-md transition-all '>
           <h2 className='text-xl font-bold mb-3 text-foreground'>
             {post.frontmatter.title}
