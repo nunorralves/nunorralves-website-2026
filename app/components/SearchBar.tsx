@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PostCard } from "./PostCard";
 
-export default function SearchBar(posts: { posts: Post[] }) {
+export default function SearchBar({ posts }: { posts: Post[] }) {
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Post[]>([]);
 
@@ -16,12 +16,11 @@ export default function SearchBar(posts: { posts: Post[] }) {
       return;
     }
 
-    const results = searchPosts(posts.posts, query);
+    const results = searchPosts(posts, query);
     setSearchResults(results.map((result) => result.item));
   }, [query, posts]);
 
-  const handleChange = (e) => {
-    // console.log("Search query:", e.target.value);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
 
