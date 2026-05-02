@@ -9,6 +9,50 @@ export async function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
 }
 
+export async function generateMetadata({ params }: { params: any }) {
+  let slug: string | undefined;
+
+  if (params && typeof (params as Promise<any>)?.then === "function") {
+    const awaited = await params;
+    slug = awaited?.slug;
+  } else if (params && typeof params === "object") {
+    slug = params.slug;
+  }
+
+  if (!slug || typeof slug !== "string") {
+    return {
+      title: "Post",
+      description: "Post details",
+    } as any;
+  }
+
+  const post = await getPostBySlug(slug);
+  const title = post.metadata.title;
+  const description = post.metadata.description || title;
+  const date = new Date(post.metadata.date).toISOString();
+  const canonicalUrl = `https://nunorralves.pt/posts/${slug}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      url: canonicalUrl,
+      title,
+      description,
+      type: "article",
+      publishedTime: date,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  } as any;
+}
+
 export default async function PostLayout({
   params,
 }: {
@@ -16,6 +60,24 @@ export default async function PostLayout({
 }) {
   const { slug } = await params; // ← Await here
   const post = await getPostBySlug(slug);
+  const canonicalUrl = `https://nunorralves.pt/posts/${slug}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": canonicalUrl,
+    },
+    headline: post.metadata.title,
+    description: post.metadata.description || post.metadata.title,
+    datePublished: new Date(post.metadata.date).toISOString(),
+    author: {
+      "@type": "Person",
+      name: "Nuno R. Alves",
+    },
+    url: canonicalUrl,
+  };
 
   return (
     <article className='mx-auto w-2/3 py-8'>
@@ -47,6 +109,11 @@ export default async function PostLayout({
           )}
         </div>
       </header>
+      <script
+        type='application/ld+json'
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className='[&>*]:mb-3 [&>*:last-child]:mb-0'>
         <MDXRemote
           source={post.content}

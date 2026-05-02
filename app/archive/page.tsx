@@ -27,7 +27,7 @@ export default async function archive() {
 
                     <ul className='space-y-2'>
                       {posts.map((post) => (
-                        <li key={post.title}>
+                        <li key={post.slug}>
                           <Link
                             href={`/posts/${post.slug}`}
                             className='text-foreground hover:text-primary transition-colors'
