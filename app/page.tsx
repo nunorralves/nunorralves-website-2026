@@ -27,23 +27,14 @@ export default async function Home({ searchParams }: HomePageProps) {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
         <p className='mb-6 font-normal'>
-          I’m an Engineering Director who enjoys building useful things, working
-          with thoughtful people, and occasionally untangling problems that
-          looked much simpler on the whiteboard.
-          <br />
-          <br />
-          Most of my career has been around platform and infrastructure — the
-          behind-the-scenes work that (when done well) nobody notices, but
-          everyone benefits from. Working with people across different places
-          and cultures has reinforced for me that great software comes down to
-          good communication, thoughtful trade-offs, and strong teams. I try to
-          create environments where trust and ownership feel natural and where
-          learning is simply part of the job, shaped by experiences ranging from
-          embedded systems and on prem systems, all the way to cloud platforms.
-          <br />
-          <br />I use this space to jot down ideas, lessons picked up along the
-          way, and occasional reflections on engineering, leadership, and other
-          bits that might be useful to someone walking a similar path.
+          I help engineering teams build platform and infrastructure that keep
+          services reliable and developers productive. I enjoy building useful
+          systems, collaborating with thoughtful people, and untangling problems
+          that looked much simpler on the whiteboard. Across embedded systems,
+          on-prem, and cloud platforms, I've learned that great software comes
+          from clear communication, practical trade-offs, and strong teams. I
+          use this space to share ideas, lessons, and occasional reflections on
+          engineering and leadership that might help others on a similar path.
         </p>
         <div className='flex items-center gap-2 pt-4 mb-12'>
           <a
@@ -137,8 +128,8 @@ export default async function Home({ searchParams }: HomePageProps) {
 
         {paginatedPosts.length > 0 ? (
           <>
-            {paginatedPosts.map((postMetadataWithSlug, idx) => (
-              <PostCard key={idx} {...postMetadataWithSlug} />
+            {paginatedPosts.map((postMetadataWithSlug) => (
+              <PostCard key={postMetadataWithSlug.slug} {...postMetadataWithSlug} />
             ))}
 
             {totalPages > 1 && (
