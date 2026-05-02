@@ -142,6 +142,10 @@ a.postcard {
   text-decoration: none;
   color: var(--color-secondary);
 }
+a.postcard h2{
+  text-decoration: none;
+  color: var(--color-primary);
+}
 a.postcard:hover {
   text-decoration: none;
   color: var(--color-secondary);

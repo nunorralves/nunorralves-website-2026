@@ -129,7 +129,10 @@ export default async function Home({ searchParams }: HomePageProps) {
         {paginatedPosts.length > 0 ? (
           <>
             {paginatedPosts.map((postMetadataWithSlug) => (
-              <PostCard key={postMetadataWithSlug.slug} {...postMetadataWithSlug} />
+              <PostCard
+                key={postMetadataWithSlug.slug}
+                {...postMetadataWithSlug}
+              />
             ))}
 
             {totalPages > 1 && (

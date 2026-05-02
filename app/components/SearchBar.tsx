@@ -3,12 +3,14 @@
 import { searchPosts } from "lib/search";
 import { Post } from "lib/types";
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PostCard } from "./PostCard";
 
 export default function SearchBar({ posts }: { posts: Post[] }) {
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Post[]>([]);
+
+  const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (query.trim() === "") {
@@ -16,8 +18,20 @@ export default function SearchBar({ posts }: { posts: Post[] }) {
       return;
     }
 
-    const results = searchPosts(posts, query);
-    setSearchResults(results.map((result) => result.item));
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = window.setTimeout(() => {
+      const results = searchPosts(posts, query);
+      setSearchResults(results.map((result) => result.item));
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [query, posts]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
