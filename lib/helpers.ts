@@ -56,7 +56,14 @@ export async function getAllPosts(): Promise<Post[]> {
       }),
   );
 
-  return posts.sort((a, b) => (a.metadata.date < b.metadata.date ? 1 : -1));
+  // Filter out unpublished posts (published === false)
+  const publishedPosts = posts.filter(
+    (p) => (p && p.metadata && p.metadata.published) !== false,
+  );
+
+  return publishedPosts.sort((a, b) =>
+    a.metadata.date < b.metadata.date ? 1 : -1,
+  );
 }
 
 // Get all posts metadata only (without content - lighter for listing pages)
@@ -65,21 +72,23 @@ export async function getAllPostsMetadataWithSlug(): Promise<
 > {
   const fileNames = await getPostsFilenames();
 
-  const posts = await Promise.all(
-    fileNames
-      .filter((fileName) => fileName.endsWith(".mdx"))
-      .map(async (fileName) => {
-        const slug = fileName.replace(/\.mdx$/, "");
-        const fullPath = await getSlugFullPath(slug);
-        const fileContents = fs.readFileSync(fullPath, "utf8");
-        const { data } = matter(fileContents);
+  const posts = (
+    await Promise.all(
+      fileNames
+        .filter((fileName) => fileName.endsWith(".mdx"))
+        .map(async (fileName) => {
+          const slug = fileName.replace(/\.mdx$/, "");
+          const fullPath = await getSlugFullPath(slug);
+          const fileContents = fs.readFileSync(fullPath, "utf8");
+          const { data } = matter(fileContents);
 
-        return {
-          slug,
-          ...(data as PostMetadata),
-        };
-      }),
-  );
+          return {
+            slug,
+            ...(data as PostMetadata),
+          };
+        }),
+    )
+  ).filter((p) => p && (p as any).published !== false) as PostMetadataWithSlug[];
 
   return posts.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
