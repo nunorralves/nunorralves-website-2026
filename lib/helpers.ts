@@ -3,20 +3,40 @@ import path from "path";
 import matter from "gray-matter";
 import { Post, PostMetadata, PostMetadataWithSlug } from "./types";
 
-const POSTS_DIRECTORY = path.join(process.cwd(), "content/posts");
+// Resolve posts directory robustly: prefer process.cwd(), fallback to relative path from this file.
+let POSTS_DIRECTORY = path.join(process.cwd(), "content/posts");
+if (!fs.existsSync(POSTS_DIRECTORY)) {
+  const alt = path.join(__dirname, "..", "content", "posts");
+  if (fs.existsSync(alt)) {
+    POSTS_DIRECTORY = alt;
+  }
+}
 
 export async function getSlugFullPath(slug: string): Promise<string> {
   if (typeof slug !== "string" || slug.length === 0) {
     throw new Error("Invalid slug provided");
   }
-  const fullPath = path.join(POSTS_DIRECTORY, `${slug}.mdx`);
+  const candidates = [];
 
-  // Check if file exists
-  if (!fs.existsSync(fullPath)) {
-    throw new Error(`Post not found: ${slug}`);
+  // prefer current POSTS_DIRECTORY resolved at module load
+  candidates.push(path.join(POSTS_DIRECTORY, `${slug}.mdx`));
+
+  // try process.cwd() explicit
+  candidates.push(path.join(process.cwd(), "content", "posts", `${slug}.mdx`));
+
+  // try relative paths from this file up to a few levels
+  for (let i = 1; i <= 4; i++) {
+    const up = new Array(i).fill('..').join('/');
+    candidates.push(path.join(__dirname, up, 'content', 'posts', `${slug}.mdx`));
   }
 
-  return fullPath;
+  // return first that exists
+  for (const fullPath of candidates) {
+    if (fs.existsSync(fullPath)) return fullPath;
+  }
+
+  // helpful debug: list candidates (avoid throwing raw list in production)
+  throw new Error(`Post not found: ${slug}`);
 }
 
 export async function getPostsFilenames(): Promise<string[]> {

@@ -7,7 +7,8 @@ type Props = {
 };
 
 export default async function TagPage({ params }: Props) {
-  const rawTag = params.tag || "";
+  const awaitedParams = await params;
+  const rawTag = awaitedParams?.tag || "";
   const tag = decodeURIComponent(rawTag);
 
   const posts = await getAllPostsMetadataWithSlug();
