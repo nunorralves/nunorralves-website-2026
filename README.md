@@ -1,5 +1,6 @@
 # Nuno Alves Website @ 2026
 
+[![E2E Tests](https://github.com/nunorralves/nunorralves-website-2026/actions/workflows/e2e.yml/badge.svg)](https://github.com/nunorralves/nunorralves-website-2026/actions/workflows/e2e.yml)
 ![GitHub repo size](https://img.shields.io/github/repo-size/nunorralves/nunorralves-website-2026)
 ![GitHub contributors](https://img.shields.io/github/contributors/nunorralves/nunorralves-website-2026)
 ![GitHub stars](https://img.shields.io/github/stars/nunorralves/nunorralves-website-2026)

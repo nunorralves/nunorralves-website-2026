@@ -6,7 +6,9 @@
     "dev": "next dev --turbo",
     "build": "next build --turbo",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@playwright/test": "^1.58.2",
@@ -17,6 +19,7 @@
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "next-mdx-remote": "^6.0.0",
+    "npx": "^10.2.2",
     "playwright-core": "^1.58.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
