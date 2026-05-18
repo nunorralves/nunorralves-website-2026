@@ -3,6 +3,7 @@ import rehypePrettyCode from "rehype-pretty-code";
 // import rehypeMermaid from "rehype-mermaid";
 import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
+import mdxComponents from "mdx-components";
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
@@ -114,9 +115,10 @@ export default async function PostLayout({
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className='[&>*]:mb-3 [&>*:last-child]:mb-0'>
+      <div className='prose max-w-none'>
         <MDXRemote
           source={post.content}
+          components={mdxComponents}
           options={{
             mdxOptions: {
               rehypePlugins: [

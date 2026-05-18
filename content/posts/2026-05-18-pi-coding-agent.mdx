@@ -1,0 +1,292 @@
+---
+title: Pi - The Terminal Coding Agent That Adapts to You, Not the Other Way Around
+date: 2026-05-18
+tags: ["AI", "LLMs", "Agents", "Typescript", "Skills", "Terminal"]
+published: true
+description: What Pi is, what is now, how to install, use and customize
+---
+
+## What Is Pi?
+
+Pi is a **minimal terminal coding harness** - a TUI-native AI coding agent that runs entirely in your terminal. Unlike monolithic IDEs or opinionated coding assistants, Pi is built on a simple philosophy: _adapt Pi to your workflows, not the other way around._
+
+You don't fork Pi to change its behavior. You extend it.
+
+At its core, Pi gives an LLM four fundamental tools - `read`, `write`, `edit`, and `bash` - and lets you layer on capabilities via **Extensions**, **Skills**, **Prompt Templates**, and **Themes**.
+
+## Installation
+
+Getting started takes seconds. Choose your platform:
+
+### Linux (Ubuntu / Debian) & macOS
+
+**Recommended - one-liner installer:**
+
+```bash
+curl -fsSL https://pi.dev/install.sh | sh
+```
+
+This script checks prerequisites (Node.js/npm), installs Pi globally, and works on both Linux and macOS.
+
+**Alternative - npm (all platforms including Linux, macOS, Windows):**
+
+```bash
+npm install -g @earendil-works/pi-coding-agent
+```
+
+Requires [Node.js](https://nodejs.org/) 18+ (latest LTS recommended).
+
+**macOS - Homebrew:**
+
+```bash
+brew install pi-coding-agent
+```
+
+### Windows
+
+On Windows, use the npm method above inside **Windows Terminal** (recommended) or any terminal with Unicode support:
+
+```bash
+npm install -g @earendil-works/pi-coding-agent
+```
+
+Pi works natively on Windows. Some terminal-specific keybindings differ (e.g., `Ctrl+Enter` instead of `Shift+Enter` for multi-line). See the [Windows docs](https://github.com/earendil-works/pi-mono/blob/main/docs/windows.md) for terminal-specific setup tips.
+
+### Verify Installation
+
+```bash
+pi --version
+```
+
+---
+
+## Provider Setup: OpenRouter (Recommended)
+
+Pi supports 20+ providers, but **OpenRouter** is the most flexible starting point - it gives you access to every major model (Claude, GPT-4o, DeepSeek, Gemini, etc.) under a single API key and a single billing relationship.
+
+### 1. Get an OpenRouter API Key
+
+1. Go to [openrouter.ai/keys](https://openrouter.ai/keys)
+2. Create a new key
+3. Set it as an environment variable:
+
+```bash
+export OPENROUTER_API_KEY=sk-or-...
+```
+
+### 2. Launch Pi
+
+```bash
+pi
+```
+
+On first launch, Pi detects the `OPENROUTER_API_KEY` and loads the available models automatically. You'll see OpenRouter models in the model picker.
+
+### 3. Pick a Model
+
+- Press `Ctrl+L` to open the model selector
+- Choose from available models - `deepseek/deepseek-v4-flash`, `anthropic/claude-sonnet-4`, `openai/gpt-4o`, and more
+- Or start with a specific model from the CLI:
+
+```bash
+pi --provider openrouter --model deepseek/deepseek-v4-flash
+```
+
+### How Provider Resolution Works
+
+Pi checks these sources in order:
+
+1. Environment variable for the provider (e.g., `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)
+2. `/login` in the TUI for OAuth-based subscriptions (Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot)
+3. No key? Pi falls back to `/login` and lets you authenticate interactively
+
+You can switch providers **mid-session** - just hit `Ctrl+L` and select any model from any provider. Context, tools, and history all carry over seamlessly.
+
+### Other Providers (Quick Reference)
+
+| Provider             | Env Variable         | Subscription via `/login` |
+| -------------------- | -------------------- | ------------------------- |
+| Anthropic            | `ANTHROPIC_API_KEY`  | Claude Pro/Max            |
+| OpenAI               | `OPENAI_API_KEY`     | ChatGPT Plus/Pro          |
+| DeepSeek             | `DEEPSEEK_API_KEY`   | -                         |
+| Google Gemini        | `GEMINI_API_KEY`     | -                         |
+| Groq                 | `GROQ_API_KEY`       | -                         |
+| Any OpenRouter model | `OPENROUTER_API_KEY` | -                         |
+
+See the [providers docs](https://github.com/earendil-works/pi-mono/blob/main/docs/providers.md) for all 20+ supported providers.
+
+---
+
+## Basic Usage
+
+Once inside the TUI, you work in a familiar chat loop - but with terminal-native superpowers:
+
+| Feature         | How                                                       |
+| --------------- | --------------------------------------------------------- |
+| File reference  | Type `@` to fuzzy-search project files                    |
+| Run bash inline | `!command` sends output to LLM; `!!command` runs silently |
+| Paste images    | Ctrl+V to paste screenshots directly                      |
+| Switch models   | `/model` or Ctrl+L to cycle                               |
+| Commands        | `/` for built-in and extension-provided commands          |
+
+Your conversation is persisted as structured sessions. You can resume, branch, fork, and compact sessions - treating your AI conversations like a version-controlled codebase.
+
+---
+
+## Model Agnostic by Design
+
+One of Pi's strongest features is its **provider-agnostic** architecture. You can switch between Claude, GPT-4o, DeepSeek, Gemini, or any other model mid-session - and the context, tools, and history all carry over seamlessly.
+
+This matters because no single model excels at everything. Use Claude for complex reasoning, GPT-4o for creative writing, or DeepSeek for cost-efficient bulk analysis - all within the same session, with the same state, the same tools, and the same customizations.
+
+You can also add custom models and providers via `~/.pi/agent/models.json` if they speak a supported API format.
+
+---
+
+## The Power of Customization
+
+This is where Pi truly shines. Three layers of customization let you shape the agent to your exact needs.
+
+### 1. Skills - Reusable Capability Packages
+
+Skills are markdown files that teach the LLM how to perform specific tasks. They're loaded on-demand and define workflows, reference docs, and tool configurations.
+
+```markdown
+# .pi/skills/code-review-pr.md
+
+Review code changes, create commits, push to GitHub, and open pull requests.
+Requires git, SSH remote, and GitHub CLI (gh) authenticated.
+```
+
+Pi follows the [Agent Skills standard](https://agentskills.io/specification) - so skills written for Claude Code or OpenAI Codex work in Pi too. Just point Pi to their directories:
+
+```json
+{
+  "skills": ["~/.claude/skills", "~/.codex/skills"]
+}
+```
+
+### 2. Extensions - TypeScript Modules for Deep Integration
+
+Extensions are full TypeScript modules with access to the entire Pi lifecycle. They can:
+
+- **Register custom tools** the LLM can call
+- **Intercept events** - block dangerous commands, inject context, customize compaction
+- **Build custom TUI components** - widgets, overlays, custom editors
+- **Add slash commands** like `/mycommand`
+
+Here's a minimal extension that blocks dangerous `rm -rf` commands:
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.on("tool_call", async (event, ctx) => {
+    if (event.toolName === "bash" && event.input.command?.includes("rm -rf")) {
+      const ok = await ctx.ui.confirm("Dangerous!", "Allow rm -rf?");
+      if (!ok) return { block: true, reason: "Blocked by user" };
+    }
+  });
+}
+```
+
+It takes about 30 lines of TypeScript to add a permission gate, a custom workflow, or an integration with an external API.
+
+### 3. Prompt Templates & Themes
+
+Prompt templates let you inject reusable instructions into any conversation:
+
+```markdown
+# .pi/prompts/security-review.md
+
+You are a security engineer. Focus on:
+
+- SQL injection and XSS vulnerabilities
+- Authentication and authorization flaws
+- Secrets and API key exposure
+```
+
+Themes customize the entire TUI look-and-feel - colors, borders, editor styling - all without touching Pi internals.
+
+### 4. Pi Packages
+
+You can bundle extensions, skills, prompts, and themes into a **Pi Package** and share it via npm or git. The community ecosystem is growing - just `npm install` a package and Pi picks it up automatically.
+
+```bash
+pi install npm:@foo/pi-tools
+pi install git:github.com/user/repo
+```
+
+---
+
+## Multi-Agent Teams
+
+One of the most exciting capabilities you can build with Pi is a **multi-agent team system** - a TypeScript extension that orchestrates multiple AI agents as a coordinated team.
+
+```yaml
+# .pi/agents/teams/code-review-team.yaml
+name: code-review-team
+
+agents:
+  scout:
+    description: Scans codebase to understand problem context
+    model: deepseek/deepseek-v4-flash
+    canTalkTo: [planner]
+
+  planner:
+    description: Creates detailed implementation plans
+    model: deepseek/deepseek-v4-flash
+    canTalkTo: [reviewer, executor, scout]
+
+  reviewer:
+    description: Reviews code for bugs and best practices
+    model: deepseek/deepseek-v4-flash
+    canTalkTo: [planner, executor]
+
+  executor:
+    description: Implements code changes following the plan
+    model: deepseek/deepseek-v4-flash
+    canTalkTo: [planner, reviewer]
+```
+
+Each agent gets its own session, its own history, and can communicate with other agents via a typed tool. The orchestrator manages the conversation flow, delegates tasks, and collects results.
+
+The extension adds a **live widget** to the TUI showing each agent's status at a glance:
+
+```
+┌─────────────────────────────────────────┐
+│ **Scout**                      ○ Ready  │
+│ *(openrouter/deepseek/...)*             │
+│ ↑0 ↓0 ⇈0 ⇊0 0%/? 💰$0                   │
+│ -                                       │
+└─────────────────────────────────────────┘
+```
+
+The architecture is deliberately straightforward:
+
+- **Model-agnostic**: Each agent can use a different model/provider - put Claude on planning, GPT-4o on implementation, DeepSeek on cost-sensitive analysis
+- **Provider-independent**: Agents use OpenRouter, Anthropic, OpenAI - any mix works
+- **Fully extensible**: Adding a new agent role means adding 3 lines of YAML and an instructions file
+
+---
+
+## Why Pi Matters
+
+After using Pi for several months across real projects, here's what sets it apart:
+
+1. **It stays out of your way.** No heavy IDE, no proprietary plugins, no vendor lock-in. It's a terminal tool that respects your existing workflow.
+
+2. **It's genuinely customizable.** The extension system isn't an afterthought - it's the primary way you interact with Pi. Every feature you want that isn't built-in can be built.
+
+3. **It's model-agnostic without compromise.** Switching models mid-session isn't a hack - it's a designed feature. The context, tools, and state all transfer transparently.
+
+4. **The multi-agent potential is real.** With ~300 lines of TypeScript and a YAML config, you can build a team of coordinated AI agents that work together on complex tasks.
+
+5. **No fork required.** All of this - the extensions, the skills, the themes, the multi-agent teams - is built _on top_ of Pi, not by modifying it. Upgrading Pi doesn't break your customizations.
+
+---
+
+## Next Steps
+
+- **Docs & deep dives:** [github.com/earendil-works/pi](https://github.com/earendil-works/pi)
+- **Blog & rationale:** [mariozechner.at/posts/2025-11-30-pi-coding-agent/](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)
