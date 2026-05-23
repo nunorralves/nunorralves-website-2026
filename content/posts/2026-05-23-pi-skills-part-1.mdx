@@ -1,0 +1,245 @@
+---
+title: "Pi Skills: Turn Your AI Agent Into a Specialist"
+date: "2026-05-23"
+tags: [pi, skills, tutorial, beginner]
+published: true
+description: "What Pi skills are, how they differ from extensions and prompts, and how teaching your agent your specific workflows makes you dramatically more efficient."
+---
+
+## What You'll Build
+
+By the end of this post, you'll understand what Pi skills are, have a clear mental model of how they work, and will have created a simple skill of your own - your first step toward turning Pi from a generalist into a specialist that knows your team's workflows, standards, and processes.
+
+> 📦 **Github repository:** All skills shown here are available for download at
+> [github.com/nunorralves/blog-lab/tree/main/tech/pi-skills-part-1](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-skills-part-1).
+> Copy the `.pi/` folder into your project to get started instantly.
+
+---
+
+## The Problem With Generalist Agents
+
+You've installed PI. You've chatted with it, asked it to fix bugs, refactor functions, maybe write some tests. It's useful. But it starts as a generalist - like a junior engineer who knows everything in theory and nothing about _your_ codebase, _your_ conventions, _your_ processes.
+
+Every time you ask it to review code, it invents its own review criteria. Every time you ask it to write an architecture decision, it guesses the format. Every time you debug a production issue, it starts from scratch.
+
+That's where skills come in. A skill is the difference between asking "review this PR" and the agent knowing _exactly_ what you mean - checking correctness _and_ clarity _and_ performance _and_ categorising comments as blocking vs nits vs praise.
+
+---
+
+## What Is a Pi Skill?
+
+A Pi skill is a **markdown file** that teaches the LLM how to perform a specific task. It's just text - no TypeScript, no compilation, no build step. You write instructions in plain Markdown, save it in the right place, and Pi finds it automatically.
+
+Here's how Pi discovers and loads skills:
+
+> ✅ **Checkpoint:** Run `pi --version` and verify you see `0.75.x` or higher. If Pi isn't installed, see the [intro post](/posts/2026-05-18-pi-coding-agent) for setup instructions.
+
+### Discovery Locations
+
+Pi scans these directories for skills (in order):
+
+| Location                        | Scope                                  |
+| ------------------------------- | -------------------------------------- |
+| `~/.pi/agent/skills/`           | Global (all projects)                  |
+| `.pi/skills/`                   | Project-local                          |
+| `~/.agents/skills/`             | Shared with Claude Code / OpenAI Codex |
+| Custom paths in `settings.json` | Anything you want                      |
+
+Drop a SKILL.md file in any of these, and Pi picks it up on next launch.
+
+### Progressive Disclosure
+
+Pi doesn't load the full skill into every conversation - it only reads the `description` field from the frontmatter and makes it available. When the agent decides a task matches, it calls `read` to load the full instructions.
+
+This means: **your description is your skill's marketing pitch.** If it's vague ("Helps with code"), the agent won't know when to use it. If it's specific ("Review pull requests for correctness, clarity, performance, and maintainability, with categorised feedback"), the agent loads it every time.
+
+---
+
+## 👀 Anatomy of a Skill
+
+Let's look at a real skill. This is the `code-review` skill from a production skill collection:
+
+**`.pi/skills/code-review/SKILL.md`**
+
+```markdown
+---
+name: code-review
+description: >
+  Review code for correctness, clarity, performance, and maintainability with categorised feedback.
+---
+
+## Procedure
+
+1. **Understand the change:**
+   - Read the PR description and linked ticket first
+   - What problem does this solve? What's the expected behaviour?
+   - Is the approach appropriate for the problem scope?
+
+2. **Correctness:**
+   - Does it do what it claims? Trace logic for happy path and edge cases
+   - Are error cases handled? What happens with nil/null/empty/boundary inputs?
+   - Are there race conditions? (Shared state, concurrent access, async operations)
+
+3. **Clarity:**
+   - Can you understand the code without the author explaining it?
+   - Are names (functions, variables, types) descriptive and consistent?
+   - Are there unnecessary abstractions or premature generalisations?
+
+4. **Performance:**
+   - N+1 queries? Unbounded loops? Missing pagination?
+   - Are expensive operations cached, batched, or deferred where appropriate?
+
+5. **Maintainability:**
+   - If requirements change slightly, how much of this breaks?
+   - Is test coverage adequate for the risk level?
+   - Does this introduce tech debt? If so, is it documented?
+
+6. **Categorise each comment:**
+   - **Blocking:** must fix before merge
+   - **Recommendation:** strongly suggest but won't block
+   - **Nit:** optional improvement
+   - **Question:** need to understand intent
+   - **Praise:** something done well
+
+## Output
+
+Review comments on the PR/MR, each categorised. Summary comment with: overall assessment
+(approve / request changes / needs discussion) and key points.
+```
+
+Now walk through it:
+
+- **Frontmatter** (`---` block): The `name` identifies the skill (lowercase, hyphens only). The `description` tells the agent _when_ to load it - this is the only part Pi keeps in context.
+- **Procedure**: Step-by-step instructions. Each step is a mini-checklist. The agent follows these like a recipe.
+- **Output**: What the skill produces. The agent knows the expected format upfront - no guessing.
+- **Pitfalls** (not shown above, but present in the full skill): Common mistakes the agent should avoid. This saves you from having to correct the same mistakes repeatedly.
+
+> 📦 **Download it:** The full `code-review` skill (including the pitfalls section) is available in the
+> [Github repository](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-skills-part-1/.pi/skills/code-review).
+
+That's it. A skill is just structured instructions. No code. No plugins. Just Markdown that teaches.
+
+> ⚠️ **Common mistake:** Writing skills as agent personas ("You are a senior engineer...") instead of procedures. Skills encode _what to do_, not _who to be_. Agent identity goes in extension code or system prompts - skills focus on workflow.
+
+---
+
+## Skills vs Extensions vs Prompts
+
+Pi has three customisation layers, and they get confused often:
+
+| Layer               | What it does                                                         | When to use                                                                |
+| ------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Skill**           | Teaches the LLM a procedure via Markdown instructions                | Teaching a workflow (code review, debugging, ADR writing)                  |
+| **Extension**       | Adds new capabilities via TypeScript (tools, events, TUI components) | Deep integration (custom tools, blocking dangerous commands, live widgets) |
+| **Prompt template** | Injects reusable instructions into any conversation via `/prompt`    | Quick context for a specific task without a formal skill                   |
+
+**Skills vs Extensions:** If you want the LLM to _do something differently_ (a procedure, a checklist, an output format), write a skill. If you want the LLM to _be able to do something new_ (call an API, read a database, block a command), write an extension.
+
+**Skills vs Prompts:** A prompt template is a quick snippet you inject manually. A skill is a structured, discoverable capability that the agent loads automatically when the task matches its description. Skills are permanent and self-documenting. Prompts are ephemeral and manual.
+
+---
+
+## Try It in 30 Seconds
+
+Let's make this real. Create a skill right now:
+
+```bash
+mkdir -p .pi/skills/summarise-pr
+```
+
+**`.pi/skills/summarise-pr/SKILL.md`**
+
+```markdown
+---
+name: summarise-pr
+description: >
+  Summarises a pull request into a concise overview with key changes,
+  affected areas, and risks. Use when reviewing or opening PRs.
+---
+
+## Instructions
+
+1. What problem does this PR solve? (one sentence)
+2. What files were changed and why? (list key files)
+3. What are the risks or concerns? (if any)
+4. Overall assessment in one sentence.
+```
+
+> ✅ **Checkpoint:** Run `pi` in your project. You should see:
+>
+> ```
+> [skills] Loaded skill: summarise-pr
+> ```
+>
+> Then ask PI: "summarise this PR diff" - it will load the skill automatically and format its response using your instructions.
+
+You just created a Pi skill. It took 30 seconds. No TypeScript, no configuration, no build step.
+
+> 📦 **Prefer to download?** Grab the `summarise-pr` skill from the
+> [Github repository](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-skills-part-1/.pi/skills/summarise-pr)
+> and drop it straight into your `.pi/skills/` folder.
+
+> ⚠️ **Pro tip:** Skills also register as slash commands. If you enable `"enableSkillCommands": true` in your settings, you can type `/skill:summarise-pr` to load it manually - useful when Pi doesn't detect the trigger automatically.
+
+---
+
+## Why a Collection Compounds
+
+One skill saves you a minute. A collection of fifteen saves you an hour. But the real value isn't speed - it's **consistency**.
+
+### Every Review Follows the Same Standard
+
+Without a code-review skill, the agent invents criteria each time. One day it focuses on performance, the next on naming. With a skill, every review checks correctness → clarity → performance → maintainability → categorisation. The same checklist. Every time.
+
+### New Teammates Learn Faster
+
+Your skill collection _is_ your team's operating manual, codified. A new engineer onboards by reading the same skills the agent uses - `code-review`, `debugging-methodology`, `write-adr`. The agent becomes a force multiplier by teaching your standards to every PR.
+
+### You Stop Repeating Yourself
+
+How many times have you typed "also check for N+1 queries" in a code review? Once you have a skill, you don't need to. The agent checks. Every time. You just approve.
+
+### Two More Examples
+
+| Skill                     | What it does                                                                              | Why you'd use it                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **debugging-methodology** | Reproduce → gather evidence → hypothesise → isolate → fix → verify (with regression test) | Stops you from fixing symptoms instead of root causes. The agent won't guess - it'll gather evidence first     |
+| **write-adr**             | Captures context, alternatives, decision, consequences in a numbered ADR format           | Ensures every architecture decision is documented with _why_ alternatives were rejected - not just the outcome |
+
+---
+
+## What Your Collection Could Look Like
+
+After a few weeks of adding skills as you encounter repetitive tasks, a typical collection might include:
+
+```
+.pi/skills/
+├── code-review/
+├── debugging-methodology/
+├── write-adr/
+├── write-design-doc/
+├── summarise-pr/
+├── dependency-audit/
+├── define-slo/
+├── run-retrospective/
+├── performance-profiling/
+├── accessibility-audit/
+└── sprint-planning/
+```
+
+Each one takes 30 minutes to write. Each one saves you hours over a quarter. And because they're just Markdown, you can share them with your team by dropping them in git.
+
+---
+
+## What's Next
+
+By now, you know what a Pi skill is, how it works, and you've created one. But a real collection takes more than a 30-second example.
+
+In **Part 2**, we'll build a production-quality skill from scratch - proper frontmatter, structured output, pitfalls section, and supporting files. We'll cover:
+
+- The SKILL.md format in full (required fields, name rules, validation)
+- Organising a skill collection by domain
+- Composing skills (one skill referencing another)
+- Sharing your collection via git and packages
+
+For now, create one more skill. Pick a task you do every week - a checklist, a meeting format, a document template - and write it as a SKILL.md. See how it feels to have Pi execute your workflow next time.

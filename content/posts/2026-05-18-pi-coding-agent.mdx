@@ -8,6 +8,10 @@ description: What Pi is, what is now, how to install, use and customize
 
 ## What Is Pi?
 
+> 📦 **Github repository:** All code examples from this post are available at
+> [github.com/nunorralves/blog-lab/tree/main/tech/pi-coding-agent](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-coding-agent).
+> Drop the `.pi/` folder into your project to use them instantly.
+
 Pi is a **minimal terminal coding harness** - a TUI-native AI coding agent that runs entirely in your terminal. Unlike monolithic IDEs or opinionated coding assistants, Pi is built on a simple philosophy: _adapt Pi to your workflows, not the other way around._
 
 You don't fork Pi to change its behavior. You extend it.
@@ -50,7 +54,7 @@ On Windows, use the npm method above inside **Windows Terminal** (recommended) o
 npm install -g @earendil-works/pi-coding-agent
 ```
 
-Pi works natively on Windows. Some terminal-specific keybindings differ (e.g., `Ctrl+Enter` instead of `Shift+Enter` for multi-line). See the [Windows docs](https://github.com/earendil-works/pi-mono/blob/main/docs/windows.md) for terminal-specific setup tips.
+Pi works natively on Windows. Some terminal-specific keybindings differ (e.g., `Ctrl+Enter` instead of `Shift+Enter` for multi-line). See the [Windows docs](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/windows.md) for terminal-specific setup tips.
 
 ### Verify Installation
 
@@ -190,6 +194,9 @@ export default function (pi: ExtensionAPI) {
 }
 ```
 
+> 📦 **Download it:** Save this as `.pi/extensions/block-rmrf/index.ts`, or grab it from the
+> [Github repository](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-coding-agent/.pi/extensions/block-rmrf).
+
 It takes about 30 lines of TypeScript to add a permission gate, a custom workflow, or an integration with an external API.
 
 ### 3. Prompt Templates & Themes
@@ -250,6 +257,9 @@ agents:
 ```
 
 Each agent gets its own session, its own history, and can communicate with other agents via a typed tool. The orchestrator manages the conversation flow, delegates tasks, and collects results.
+
+> 📦 **Download it:** Save this as `.pi/agents/teams/code-review-team.yaml`, or grab it from the
+> [Github repository](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-coding-agent/.pi/agents/teams).
 
 The extension adds a **live widget** to the TUI showing each agent's status at a glance:
 
