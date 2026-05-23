@@ -1,5 +1,6 @@
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
+import remarkGfm from "remark-gfm";
 // import rehypeMermaid from "rehype-mermaid";
 import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
@@ -121,6 +122,7 @@ export default async function PostLayout({
           components={mdxComponents}
           options={{
             mdxOptions: {
+              remarkPlugins: [remarkGfm],
               rehypePlugins: [
                 [
                   rehypePrettyCode,
