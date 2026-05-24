@@ -1,14 +1,14 @@
 ---
-title: Create a Dynamic Sitemap in Next.js
+title: "Create a Dynamic Sitemap in Next.js"
 date: 2020-10-24
-tags: ["javascript", "reactjs", "nextjs", "SEO"]
+tags: [javascript, reactjs, nextjs, seo]
 published: true
-description: For improving Search Engine Optimization (SEO), might be needed to add a sitemap or robots.txt file to your Next.js site. Let's create one dynamically.
+description: "Generate a dynamic sitemap.xml at build time in Next.js - glob-based page discovery, robots.txt setup, and what to watch out for when your site has dynamic routes."
 ---
 
 ![Create a Dynamic Sitemap in Next.js](/images/2020-10-24-dynamic-sitemap/cover.jpg)
 
-It might be that your site doesn't show on google search, or just some of its pages. It doesn't mean it is not indexed by google, but some pages might be missing on it. In that case, consider adding a sitemap to help Google discover all your website pages. Let's see how we can do it!
+A sitemap tells search engines what pages exist on your site. A dynamic sitemap builds itself as you add pages, so you never have to maintain a URL list by hand. This tutorial walks through generating a `sitemap.xml` at build time using [Next.js](https://nextjs.org/) (v9.5, the latest at time of writing), [globby](https://github.com/sindresorhus/globby) for file matching, and [prettier](https://prettier.io/) for clean XML output.
 
 ## What is a sitemap
 
@@ -44,11 +44,11 @@ All other tags are optional.
 
 All URLs in a Sitemap must be from a single host. You can check protocol [here](https://www.sitemaps.org/protocol.html)
 
-## What is robot.txt file
+## What is a robots.txt file
 
 A robots.txt file tells search engine crawlers which pages or files the crawler can or can't request from your site. This is used mainly to avoid overloading your site with requests.
 
-## Sample robot.txt file
+## Sample robots.txt file
 
 Create a static file at `public/robots.txt`. It will define which files can be crawled and where the sitemap is located.
 
@@ -63,19 +63,17 @@ Simple as that!
 
 If your site is not frequently updated, you might consider defining and updating this file statically. On other hand, if you update it frequently or you have dozens or even hundreds of pages, you might / should consider doing it dynamically.
 
-## Let's implement a dynamic sitemap.xml file generator
+## Let's implement a dynamic sitemap.xml generator
 
-First, let's install a very useful package called [`globby`](https://github.com/sindresorhus/globby). It will allow us to do user-friendly [glob](<https://en.wikipedia.org/wiki/Glob_(programming)>) matching.
+First, install the packages we'll need:
 
 ```bash
-yarn add globby
-
-# or
-
-npm install globby
+npm install globby prettier
 ```
 
-Now, let's create our node script for generating sitemap.xml file. Create on root of your project, for example, a folder `scripts` and a file under it called `generate-sitemap.js`. Add the following:
+[`globby`](https://github.com/sindresorhus/globby) does user-friendly [glob](<https://en.wikipedia.org/wiki/Glob_(programming)>) matching across your pages directory, and [`prettier`](https://prettier.io/) formats the XML output so it's human-readable.
+
+Now, create a `scripts/generate-sitemap.js` file in your project root:
 
 ```js
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -151,7 +149,7 @@ module.exports = {
 };
 ```
 
-Nothing else todo!
+Nothing else to do for the basic setup.
 
 ## Test it!
 
@@ -187,4 +185,23 @@ Just start you server. If you follow this tutorial you should see a new file und
 </urlset>
 ```
 
-And that's it!
+## Honest Take: What This Approach Doesn't Handle
+
+This pattern works well for static sites with a known set of page files, but a few limits are worth naming before you rely on it:
+
+- **Dynamic routes are invisible.** The script scans file paths - it has no way to know what slugs your `[slug].js` pages will resolve to. If your blog has 50 posts from a CMS or local markdown files, they won't appear in the sitemap unless you add a separate data-fetching step.
+- **The webpack hook is fragile.** Running the script via `isServer` in `next.config.js` means it executes during webpack initialisation - before the full Next.js runtime is ready. It's fine for a simple glob, but if the script grows to read from a database or API, you'll want to move it to a dedicated build step or a `postbuild` npm script.
+- **Hardcoded domain.** The script embeds `nunorralves.pt` directly. It won't adapt between local dev, staging, and production without environment-aware logic.
+- **Prettier path dependency.** The `../../.prettier.config.js` relative path only works if the script is invoked from the project root. If you later change how the script is called, this breaks silently.
+- **No incremental builds.** Every run regenerates the full sitemap. For most sites (even hundreds of pages) this is irrelevant, but it's worth knowing.
+
+For a personal blog with static pages, this is the right level of complexity. For anything larger, look at Next.js's [built-in `getServerSideProps` sitemap pattern](https://nextjs.org/learn/seo/crawling-and-indexing/xml-sitemaps) or dedicated packages like `next-sitemap`.
+
+## Wrapping Up
+
+You now have a `sitemap.xml` that builds itself: add a page file, rebuild, and the sitemap updates automatically - no manual URL list maintenance.
+
+- `robots.txt` points crawlers to the sitemap
+- `globby` discovers all page files
+- The script transforms file paths into `sitemap.org`-compliant XML
+- Prettier keeps the output clean
