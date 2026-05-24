@@ -1,14 +1,17 @@
 ---
-title: How To Create a Simple Blog with Next.js and Markdown
+title: "Building a Blog with Next.js and Markdown: A Walkthrough"
 date: 2020-10-22
-tags: ["javascript", "reactjs", "nextjs", "markdown"]
+tags: [javascript, reactjs, nextjs, markdown]
 published: true
-description: Lets create a simple blog listing and navigation using Next.js and Markdown
+description: >
+  Step-by-step guide to building a statically-generated blog with Next.js
+  and Markdown - dynamic routes, static props, gray-matter parsing, and
+  a component-based layout - all with minimal dependencies.
 ---
 
 ![Create Simple Blog with Next.js and Markdown](/images/2020-10-22-nextjs-markdown-blog/cover.jpg)
 
-In this short tutorial I'll walk you through how you can create an easy and quick (very simple) blog website for publishing your articles using [Next.js](https://nextjs.org/) and [Markdown](https://en.wikipedia.org/wiki/Markdown).
+A blog where you write in Markdown and publish with minimal ceremony — no CMS, no database, no build-time API calls. This tutorial walks through exactly that: a [Next.js](https://nextjs.org/) (v9.5, the latest at time of writing) site that reads local `.md` files at build time, parses frontmatter with `gray-matter`, renders content with `react-markdown`, and generates a page per post via dynamic routing.
 
 ## What is Next.js
 
@@ -24,9 +27,13 @@ To create a Next.js application, open the terminal and just run the following co
 
 After, you should have a folder called `nextjs-markdown-blog`.
 
-Execute the following commands
+```bash
+npx create-next-app nextjs-markdown-blog
+cd nextjs-markdown-blog
+npm run dev
+```
 
-And development server starts on port 3000 by default. Open [http://localhost:3000](http://localhost:3000) from your browser and you should see the following:
+The development server starts on port 3000 by default. Open [http://localhost:3000](http://localhost:3000) from your browser and you should see the following:
 
 ![Next.js Development Server Running](/images/2020-10-22-nextjs-markdown-blog/developmentserver.png)
 
@@ -40,15 +47,27 @@ You should have the above folder structure. I'll not enter into details about [N
 
 To keep the simplicity of this article and focus on what is presented, you can delete folders `styles` and `api` under `pages`.
 
-Also, delete the first line of `_app.js`:
+Also, delete the first line of `_app.js` (the CSS import for the default template):
 
-That's should do it for now.
+```js
+// delete this line:
+import "../styles/globals.css";
+```
+
+That should do it for now.
 
 ## Starting Blog implementation
 
-Let's start by creating a `site.config.json` file in the root folder, so we have a unique place for website global configuration without hardcoding values on each file. On it, place the following code:
+Let's start by creating a `site.config.json` file in the root folder, so we have a unique place for website global configuration without hardcoding values on each file:
 
-Now, go to index.js and type the following code, replacing the existing one:
+```json
+{
+  "title": "My Blog",
+  "description": "A blog about things I build and learn"
+}
+```
+
+Now, go to `pages/index.js` and type the following code, replacing the existing one:
 
 You should now see on [http://localhost:3000](http://localhost:3000):
 
@@ -64,7 +83,7 @@ As stated in the beginning of the article, we can have two types of pre-renderin
 - **_Server Side Rendering using_**
   - getServerSideProps: for fetching data on each request
 
-Let's then, using Static Generation strategy for our blog, inject previously defined site configurations into the page. Add the following code to `index.js`
+Let's then, using Static Generation strategy for our blog, inject previously defined site configurations into the page. Add the following code to `pages/index.js`
 
 This should be what we see when we navigate to our index page now:
 
@@ -128,7 +147,7 @@ const Layout = ({ children, title, ...props }) => {
 export default Layout;
 ```
 
-Now, adapt `index.js` and create a new page `about.js`:
+Now, adapt `pages/index.js` and create a new page `pages/about.js`:
 
 ```js
 import Layout from "../components/Layout";
@@ -226,7 +245,7 @@ module.exports = {
 
 Now, let's create a dynamic route! For this, we will create a `post` folder under `pages` and a file `[slug].js` under newly created folder `post`. Also create another folder named `posts` at root, where markdown blog posts will be added. Next.js let us add brackets to a page to create these dynamic routes (slugs) and make possible to access what page was called using this slug inside the file.
 
-Add the following to `[slug].js`:
+Now create `pages/post/[slug].js` — this is the dynamic route that renders individual posts:
 
 ```js
 import Link from "next/link";
@@ -295,8 +314,7 @@ In `getStaticProps` we retrieve information from `site.config.js` as we've done 
 
 In `getStaticPaths` we define the list of paths that will be rendered at build time. We iterate over all files on `posts` folder, parse files names to define respective slugs and return a path list based on those ones. We also set fallback to `false` so 404 is returned in case some page is not under this list.
 
-Let's finally create a markdown blog post!  
-Create a file under `posts` folder and name it whatever you like, for example `myfirstpost.md`. Use markdown and add something like the following:
+Let's finally create a markdown blog post! Create a file under `posts/` and name it whatever you like, for example `myfirstpost.md`:
 
 ```markdown
 ---
@@ -406,5 +424,27 @@ Create just another markdown post to have more on the list. You should now have 
 
 ![Index List Screen](/images/2020-10-22-nextjs-markdown-blog/app6screen.png)
 
-And that's finally it! I will leave styling for another post.
-If you prefer you can also check or download source code from [my github](https://github.com/nunorralves/blog-examples-tutorials/tree/main/nextjs-markdown-blog).
+## Honest Take: What This Approach Doesn't Handle Well
+
+This pattern gets you a working blog fast, but it's worth naming the limits before you build on it:
+
+- **No incremental build support.** Every post edit triggers a full rebuild of all pages. With 10 posts it's irrelevant. With 200 it becomes a problem - you'd want `fallback: true` + incremental static regeneration or a switch to `getServerSideProps` for the post list.
+- **Images require manual management.** The `public/images/` approach works but there's no pipeline - no optimisation, no alt-text linting, no responsive sizes. For a personal blog that's fine. For anything with contributors you'd want a CMS-backed image service.
+- **`raw-loader` is a wedge, not a solution.** Importing `.md` files as strings works, but it bypasses Next.js's webpack pipeline for those files. If you later want to extract headings for a table of contents or process code blocks at build time, you'll need to switch to reading the filesystem directly via `fs`.
+- **No search, no tags, no RSS.** This is a deliberate omission for this tutorial, but each one requires its own parsing and generation step. They're not hard to add - just know you'll need them eventually.
+
+The pattern excels at one thing: getting out of your way so you write. If that's the goal, it's the right trade.
+
+## Wrapping Up
+
+At this point you have:
+
+- A homepage listing all posts (parsed at build time from local `.md` files)
+- A dynamic `[slug].js` route rendering each post with frontmatter metadata and Markdown body
+- Shared layout, header, and footer components
+- A central `site.config.json` so nothing is hardcoded
+- Everything statically generated — no server runtime, no database
+
+**What's missing (and why it's intentional):** No styling, no pagination, no RSS, no tags. This is the minimum viable blog — add the features you actually need, not the ones every blog template ships.
+
+If you prefer you can also check or download the source code from [github.com/nunorralves/blog-examples-tutorials/tree/main/nextjs-markdown-blog](https://github.com/nunorralves/blog-examples-tutorials/tree/main/nextjs-markdown-blog).
