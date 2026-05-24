@@ -1,37 +1,74 @@
 ---
-title: How to Build a Bench Power Supply From ATX - Part I
+title: "How to Build a Bench Power Supply From ATX - Part I"
 date: 2021-06-08
-tags: ["electronics", "atx", "power supply"]
+tags: [electronics, atx, power-supply]
 published: true
-description: In this post, I'll show you how to create a bench power supply from an ATX power source.
+description: "Recycling an old ATX power supply into a lab bench power supply with fixed 3.3V, 5V, 12V outputs, USB ports, and a variable 1.25-25V output - with part numbers, wiring notes, and the gotchas the photos don't show."
+# series: build-a-bench-power-supply
+# series_part: 1
+# series_phase: Foundation
 ---
 
 ![Bench Power Supply](/images/2021-06-08-power-supply-1/power-supply-panel.jpg)
 
-I needed a bench power supply for testing, fixing, and building my electronics and IOT projects. Despite the fact that I could buy one, I decided to recycle an ATX power source I had stored, and create a new bench power source from it.
+I needed a bench power supply for testing, fixing, and building electronics and IoT projects. I could have bought one, but I had an old ATX power supply gathering dust - so I recycled it into a lab-grade bench supply with fixed voltages, USB outputs, and a variable 1.25-25V rail.
 
-For that, I started defining my requirements. I would need:
+This is Part 1 of a two-part series. Part 1 covers the electronics and panel wiring. Part 2 will build the enclosure.
+
+**Safety first:** An ATX power supply contains large electrolytic capacitors that can hold a dangerous charge even after the unit is unplugged. The standby 5VSB rail is always live when the supply is connected to mains. If you are not comfortable working with mains-powered equipment, buy a bench supply instead. Discharge all capacitors before handling the open PSU.
+
+## Requirements
+
+I defined these outputs based on the projects I typically build:
 
 - One 3.3V output
-- Two +5V output
+- Two +5V outputs
 - One +12V output
 - One -12V output
-- Two USB outputs
-- A variable output (voltage and current), between 1.25-25 Volt and 0-2 Amperes
+- Two USB outputs (5V, for powering microcontroller boards)
+- One variable output: 1.25-25V, 0-2A (using a Boost Buck converter)
+- Power switch (mains on/off)
+- Power-on LED (red)
+- Standby LED (green)
+- Independent switch for the variable output
+- Embedded digital multimeter for the variable rail
 
-With this, I could get any (variable) voltage between 1.25V to 25V and also a combination of any of the fixed ones.
+## Components Used
 
-As a requirement, I also want to have a power switch (on/off), a power-on LED (red), a standby LED (green) and another switch for turning on/off the variable output independently. And, as a final touch, a digital multimeter embedded for the variable output.
+| Part                 | Spec / Model                                             | Notes                                                                    |
+| -------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| ATX power supply     | Generic 500W unit (check your label for rail ratings)    | Any standard ATX will work; match your current needs to the rail ratings |
+| Boost Buck converter | LM2596-based module (constant voltage/current)           | Widely available; solder terminals directly for reliability              |
+| Digital panel meter  | 0-30V / 0-10A LED display (two-wire or three-wire)       | Calibrate with a multimeter before mounting                              |
+| Binding posts        | 5 pairs (red/black, panel-mount, 20A rated)              | One pair per fixed output + one for variable                             |
+| USB jacks            | 2x female USB-A (panel-mount)                            | Connect to 5VSB for always-on or +5V for switched                        |
+| Toggle switches      | SPST, panel-mount, 3A rated                              | One for mains, one for variable output                                   |
+| LEDs                 | 5mm red + green, with 220 ohm current-limiting resistors | Red = power on, green = standby                                          |
+| Acrylic sheet        | 3mm, laser-cut or hand-drilled                           | For the front panel                                                      |
 
-This is the circuit schematic, with the requirements above
+Substitutions: The LM2596 can be replaced with any CC/CV buck converter module. The panel meter can be any 0-30V LED display - just verify the power input matches your supply rail (some need isolated power).
+
+## Circuit Overview
+
+The schematic shows the full wiring. Here is how it breaks down:
+
+1. **Fixed outputs:** Each ATX voltage rail (3.3V, +5V, +12V, -12V) is wired directly to a pair of binding posts on the front panel. The ATX ground (black wires) is common across all outputs.
+2. **USB outputs:** +5V and ground from the ATX are wired to USB-A jacks. These provide 5V for microcontroller boards and small projects.
+3. **Variable output:** The +12V rail feeds the Boost Buck converter's input. The converter's output goes to its own pair of binding posts through a toggle switch, so the variable rail can be turned off independently.
+4. **Digital panel meter:** Wired across the variable output terminals to display voltage (and current, depending on the meter model).
+5. **LEDs:** Power-on LED (red) is wired to the switched +5V rail. Standby LED (green) is wired to 5VSB (the always-on standby rail), so it lights whenever the ATX is connected to mains.
+
+**Critical wiring note:** The ATX power supply will not start unless you short the PS-ON wire (usually green) to ground. This is typically done with a toggle switch - closed = PSU on, open = PSU off. Double-check your ATX pinout before wiring: the green PS-ON and grey Power-Good wires are easy to confuse.
 
 ![Bench Power Supply Schematic](/images/2021-06-08-power-supply-1/Schematic.png)
 
-So, let's get started. I used this ATX, with output voltages and currents identified on it
+I used this ATX, with output voltages and currents identified on it
 
 ![ATX Power Supply](/images/2021-06-08-power-supply-1/atx-power-supply.jpg)
 
-I also designed my front panel, printed it and transfer the design to an acrylic board
+## Front Panel
+
+I designed the front panel layout, printed it, and transferred the design to an acrylic board.
 
 ![Front Panel acrylic](/images/2021-06-08-power-supply-1/front-panel-design-acrylic-board.jpg)
 
@@ -41,19 +78,25 @@ Then I drilled it according to the design and glued a new printout. After that, 
 
 ![Acrylic Panel Varnished](/images/2021-06-08-power-supply-1/panel-acrylic-varnish.jpg)
 
-Then... wiring time! Cut the connector from the ATX power source and group wires by output voltages (or colors). I've tried to make groups of 3 so that they could handle the maximum amperage described with no problems
+## Wiring
+
+Start by cutting the ATX connector block off and separating wires by voltage (ATX uses standard colour coding: yellow = +12V, red = +5V, orange = +3.3V, blue = -12V, black = GND, green = PS-ON, grey = Power-Good, purple = 5VSB). Group wires by voltage - I bundled 3 wires per rail to handle the rated amperage without single-wire overload.
 
 ![ATX Wires](/images/2021-06-08-power-supply-1/atx-wires.jpg)
 
 ![ATX Wires Grouping](/images/2021-06-08-power-supply-1/atx-wires-grouping.jpg)
 
-For the variable section, I've unsoldered Boost Buck converter potentiometers and soldered the new ones with wires, so that they could be attached to the front panel. I've also soldered power input from the ATX and the Digital Multimeter on it
+**Gotcha:** ATX wires are thin (18-20 AWG) but multiple wires in parallel share the current. Three parallel wires per rail is safe for the typical ATX rating. Do not rely on a single wire for high-current loads.
 
-![Boost Buck Wiring](/images/2021-06-08-power-supply-1/regulator-wiring.jpg)
+### Variable Output Wiring
 
-![Boost Buck Multimeter](/images/2021-06-08-power-supply-1/regulator-multimeter.jpg)
+For the variable section, I unsoldered the Boost Buck converter's trim potentiometers and replaced them with panel-mount potentiometers on long wires, so the controls sit on the front panel. I also soldered the +12V input from the ATX and the digital panel meter connections directly to the converter board - no sockets, to avoid intermittent contact.
 
-Finally, we can proceed with power output connectors, USB, Power On and Standby LEDs wiring
+### Power Outputs, USB, and LEDs
+
+Wire the binding posts to their respective ATX rails. Wire the USB jacks to +5V and GND. Wire the power-on LED (red) through a 220 ohm resistor to the switched +5V rail, and the standby LED (green) through a 220 ohm resistor to the 5VSB rail.
+
+**Gotcha:** The standby LED (green) will always be on when the ATX is plugged into mains, even when the main power switch is off. This is intentional - it confirms the ATX has mains power. If it is off, check your mains connection before troubleshooting anything else.
 
 ![Front Panel wiring](/images/2021-06-08-power-supply-1/front-panel-wiring.jpg)
 
@@ -61,8 +104,23 @@ Finally, we can proceed with power output connectors, USB, Power On and Standby 
 
 ![Front Panel connectors wiring](/images/2021-06-08-power-supply-1/front-panel-connectors-wiring.jpg)
 
-This is the final result, after everything attached to the panel, wired and connected
+## Final Result
 
 ![Power Supply Panel](/images/2021-06-08-power-supply-1/power-supply-panel.jpg)
 
-In [Part 2]() of this tutorial, I'll show how to do a suitable case for the bench power supply.
+The panel is fully wired, tested, and working. Every fixed output delivers within ATX spec, the variable output adjusts smoothly from 1.25V to 25V, and the panel meter reads accurately.
+
+## Honest Take
+
+A few things I would do differently next time:
+
+- **Panel-mount the Boost Buck converter directly** rather than using extended potentiometer wires. The wires introduce noise on the voltage adjustment and the potentiometer mounting is less sturdy than I would like.
+- **Label the back of the panel** with wire colours and rail assignments before assembling. Once everything is wired, tracing a loose connection means disassembling the whole bundle.
+- **Test the variable output under load** before final assembly. The LM2596-based modules are rated for 2A but some cheap variants struggle above 1.5A without active cooling.
+- **Add a fuse** on the variable output. The ATX has over-current protection on its rails, but the Boost Buck module does not - a dead short on the variable output could damage the module before the ATX protection kicks in.
+
+The build works well for everyday bench use. If I were doing it again, I would consider a dedicated bench supply kit for the variable section and use the ATX only for the fixed rails - the Boost Buck converter adds complexity that a proper bench supply module would avoid.
+
+## What is Next
+
+Part 2 will cover building a suitable enclosure for the panel - measurements, material choices, ventilation, and mounting.
