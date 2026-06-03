@@ -1,0 +1,320 @@
+---
+title: "Pi Skills (part 2): Advanced Skill Composition"
+date: "2026-05-29"
+tags: [pi, skills, ai-agents, composition]
+published: true
+description: "Single skills are powerful. Chained skills are transformative. Learn to compose Pi skills into multi-step workflows, bundle them into packages, and know when a skill isn't enough."
+# series: pi
+# series_part: 3
+# series_phase: Foundation
+---
+
+Single skills solve single problems. That's part 1. The moment you try to chain them into a real workflow, you hit a wall: no data passthrough between steps, no branching logic, and skill bodies that bloat past 500 lines trying to do everything at once.
+
+The fix isn't bigger skills. It's composition: an orchestrator skill that delegates to others, conditional logic in plain markdown, and Pi Packages that bundle your chains into something you can install on any machine. Twenty lines of markdown, zero new syntax, and a pipeline that runs in under 30 seconds.
+
+## What You'll Build
+
+By the end of this post you'll have a composed skill pipeline that takes a meeting transcript, extracts action items, categorises them by owner, and formats a structured brief - all by chaining three skills together. You'll also know how to bundle those skills into a Pi Package and share it across machines or with a team.
+
+If you missed [part 1](/posts/2026-05-23-pi-skills-part-1), start there - it covers the basics of writing a single `SKILL.md` and how Pi discovers it.
+
+> 📦 **GitHub Repository:** All skill examples from this post are at
+> [github.com/nunorralves/blog-lab/tree/main/tech/pi-skills-part-2](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-skills-part-2)
+
+## Prerequisites
+
+- Pi version: `>=0.75.4`
+- Node.js: `>=18`
+- Read [Pi Skills part 1](/posts/2026-05-23-pi-skills-part-1) - this post assumes you've written at least one skill and understand the `SKILL.md` frontmatter format
+
+## The Problem With One Skill
+
+In part 1 we built individual skills: a code review checklist, a PR summariser. Each one solves a single problem well. The system prompt lists available skills, Pi loads the right one when the task matches, and it works.
+
+But real workflows rarely start and end in one step. Take a simple example: get a long email thread, extract the decisions people actually made, and format them as a one-paragraph summary. That's three skills, chained - and it already breaks the single-skill model.
+
+If you throw the full workflow at Pi as a single skill, two things go wrong:
+
+1. The `description` frontmatter becomes so broad it stops matching anything useful - Pi can't decide when to load it
+2. The skill body balloons past 500 lines, burning context window on instructions Pi doesn't need for the specific step it's on
+
+Composition solves both. Each skill stays focused. Pi picks the right one for the current step. And you wire them together with a single orchestrator skill that describes the pipeline.
+
+## Skill Chaining - Referencing One Skill From Another
+
+A skill can instruct Pi to load another skill. There's no special syntax - it's just markdown that the LLM reads and follows. The orchestrator skill says "use the X skill first, then feed its output to the Y skill."
+
+Here's the simplest possible orchestrator:
+
+**`.pi/skills/meeting-brief/SKILL.md`**
+
+```markdown
+---
+name: meeting-brief
+description: >
+  Takes a meeting transcript and produces a structured action-item brief.
+  Use when you have a raw transcript and need an organised summary with
+  owners and deadlines.
+---
+
+# Meeting Brief Pipeline
+
+This skill orchestrates a three-step pipeline. Follow the steps in order.
+
+## Step 1 - Extract Action Items
+
+Use the `/skill:extract-action-items` command with the transcript as input.
+This skill will parse the transcript and output a list of action items with
+any owners and dates it can identify.
+
+## Step 2 - Categorise by Owner
+
+Take the output from Step 1 and feed it to the `/skill:categorise-by-owner`
+command. This groups action items under each person's name.
+
+## Step 3 - Format as Brief
+
+Take the categorised list and use `/skill:format-brief` to produce a
+Markdown document suitable for sharing in email or Slack.
+```
+
+That's it - 20 lines of markdown, three well-named skills, and a clear order. The orchestrator doesn't contain any logic itself. It delegates.
+
+Here's one of the chained skills so you can see the actual format:
+
+**`.pi/skills/extract-action-items/SKILL.md`**
+
+````markdown
+---
+name: extract-action-items
+description: >
+  Extracts action items, owners, and deadlines from meeting transcripts.
+  Use when you have raw text from a meeting and need a structured list
+  of who needs to do what.
+---
+
+# Extract Action Items
+
+Given a meeting transcript or notes, extract every action item.
+
+## Output Format
+
+For each action item, output one line:
+
+```
+- [ ] <task description> - assigned to: <name>, deadline: <date or "none">
+```
+
+## Rules
+
+- Include every task mentioned, even tentatively
+- If no owner is stated, write "unassigned"
+- If no deadline is stated, write "none"
+- Ignore general discussion - only action items
+- If someone says "I'll", "let me", "I'm going to", that counts
+````
+
+> ✅ **Checkpoint:** In your Pi project, create both skills above. Then type `This is a meeting transcript: John will update the landing page by Friday. Sarah is going to schedule the client call. We should think about the Q3 roadmap.` and Pi should load `extract-action-items` and output the structured list.
+
+### How Pi Discovers the Chain
+
+Pi doesn't know skills are chained. Here's what actually happens:
+
+1. You pasted a transcript. Pi's system prompt lists `extract-action-items` with its description - the description says "extracts action items from meeting transcripts" and the input matches, so Pi loads it.
+2. The skill body says "output one line per action item". Pi does that.
+3. If you had used the orchestrator instead (`/skill:meeting-brief`), Pi would have loaded that skill first, read the chain instructions, then loaded each sub-skill in sequence - all driven by natural language instructions in the orchestrator's body.
+
+The orchestrator is invisible to Pi's matching logic beyond its own description. It's a convention, not a feature. And that's a deliberate design: the LLM reads instructions in plain English, not a workflow DSL. No new syntax to learn.
+
+## Conditional Logic & Branching
+
+Sometimes the pipeline needs to branch - check a field and decide which next step to take. In a skill, you do this with markdown conditionals:
+
+```markdown
+## Step 2 - Validate and Route
+
+Read the action items from Step 1.
+
+### If ALL items have an owner AND a deadline
+
+Proceed directly to Step 3 (format the brief).
+
+### If ANY items are "unassigned" or have deadline "none"
+
+First, run `/skill:enrich-action-items` to fill in missing data.
+When that completes, proceed to Step 3.
+```
+
+Is this robust? Not the way code is. The LLM can misinterpret "ALL" or skip the branch. But for 90% of workflows where the LLM already understands the domain, it works reliably enough to ship. For the 10% where it doesn't - you need an extension. We'll get there in post 04.
+
+> ⚠️ **Know the limit:** Conditional logic in skills is interpreted by the LLM, not evaluated. It works for simple branching but breaks down when the condition depends on precise data parsing or when the penalty for getting it wrong is high. If your branch depends on counting tokens, parsing JSON, or doing arithmetic, you've crossed into extension territory.
+
+## Bundling Skills Into a Pi Package
+
+Three skills in `.pi/skills/` works on your machine. If you want to share them - with your team, across your machines, or with the community - you need a Pi Package.
+
+A package is a directory with a `package.json` that includes a `pi` manifest. Pi auto-discovers skills from a `skills/` directory inside the package.
+
+**`meeting-tools/package.json`**
+
+```json
+{
+  "name": "meeting-tools",
+  "version": "1.0.0",
+  "description": "Meeting transcript processing skills for Pi",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "pi": {
+    "skills": ["./skills"]
+  }
+}
+```
+
+**Directory structure:**
+
+```
+meeting-tools/
+├── package.json
+├── skills/
+│   ├── meeting-brief/
+│   │   └── SKILL.md
+│   ├── extract-action-items/
+│   │   └── SKILL.md
+│   ├── categorise-by-owner/
+│   │   └── SKILL.md
+│   └── format-brief/
+│       └── SKILL.md
+└── README.md
+```
+
+Install from git:
+
+```bash
+pi install git:github.com/your-org/meeting-tools
+```
+
+Or from npm (if you publish it):
+
+```bash
+pi install npm:meeting-tools
+```
+
+That's it. No compilation. No build step. The skills just work.
+
+> ✅ **Checkpoint:** Create a `meeting-tools` directory with the structure above and the `package.json`. Run `pi install ./meeting-tools --local`. You should see `meeting-brief` appear in available skills when you start a new Pi session. You can also run `pi remove ./meeting-tools` to remove it back.
+
+## A Real End-to-End Walkthrough
+
+Let's step through the entire pipeline with a real transcript. This is the kind of workflow where skills genuinely earn their keep - not a code review, not a PR summary. A meeting that generated too many action items to track.
+
+**Input (pasted into Pi):**
+
+```
+Team sync - May 28, 2026
+
+Present: Ana, Marco, Lena
+
+Ana: I'll update the onboarding docs by Friday. Also we should revisit the
+login flow, the error messages are confusing.
+
+Marco: I'm going to fix the payment timeout bug. Probably next week.
+Lena said she'd review my PR. Let me also check the analytics dashboard —
+it seems slow.
+
+Lena: Yes, I'll review Marco's PR by Wednesday. And I noticed the search
+endpoint returns 500s sometimes. Can someone look at that?
+
+Ana: I can take the search bug after onboarding docs.
+
+Marco: Should we also update the API docs? Users keep asking about the new
+endpoints.
+```
+
+**Step 1 - Load `meeting-brief`:**
+
+```
+/skill:meeting-brief
+```
+
+Pi reads the orchestrator, loads `extract-action-items` first, and outputs:
+
+```
+- [ ] Update onboarding docs - assigned to: Ana, deadline: Friday
+- [ ] Revisit login flow error messages - assigned to: unassigned, deadline: none
+- [ ] Fix payment timeout bug - assigned to: Marco, deadline: next week
+- [ ] Review Marco's PR - assigned to: Lena, deadline: Wednesday
+- [ ] Check analytics dashboard performance - assigned to: Marco, deadline: none
+- [ ] Investigate search endpoint 500 errors - assigned to: Ana, deadline: none
+- [ ] Update API docs for new endpoints - assigned to: unassigned, deadline: none
+```
+
+**Step 2 - `categorise-by-owner` fires:**
+
+```
+## Ana
+- [ ] Update onboarding docs (deadline: Friday)
+- [ ] Investigate search endpoint 500 errors (deadline: none)
+
+## Marco
+- [ ] Fix payment timeout bug (deadline: next week)
+- [ ] Check analytics dashboard performance (deadline: none)
+
+## Lena
+- [ ] Review Marco's PR (deadline: Wednesday)
+
+## Unassigned
+- [ ] Revisit login flow error messages (deadline: none)
+- [ ] Update API docs for new endpoints (deadline: none)
+```
+
+**Step 3 - `format-brief` produces the final document:**
+
+A clean Markdown brief with headings per person, action items as checkboxes, and a summary of unassigned items at the bottom - ready to paste into Slack or email.
+
+The whole pipeline runs in under 30 seconds. No scripting. No API calls. Just three markdown files and an orchestrator.
+
+This is where skills shine: workflows where the intelligence is in the LLM's language understanding, and the structure is in the skill's instructions. The composition layer - the orchestrator - cost me 20 lines of markdown.
+
+## When Skills Aren't Enough
+
+Skills are markdown files that the LLM reads as instructions. That's simultaneously their strength and their ceiling.
+
+**Use a skill when:**
+
+- The workflow is primarily about structuring language - parsing, formatting, categorising, summarising
+- Each step can be described in plain English instructions that an LLM can follow
+- You need the workflow to be portable across AI agents (skills follow the Agent Skills standard)
+- You want zero-code, zero-build setup
+
+**Use an extension when:**
+
+- You need to intercept Pi events - blocking dangerous commands, injecting context before each turn, modifying tool results
+- The workflow requires precise computation - token counting, data validation, arithmetic
+- You need a custom slash command with complex argument handling or autocompletion
+- You're building a TUI widget - a footer bar, an overlay, a status panel
+- The reliability requirement is high and the instruction can't be ambiguous
+
+Skills and extensions aren't competing. They're complementary layers in Pi's architecture. Skills handle "what the agent knows how to do." Extensions handle "what the harness can do." The boundary gets clearer with use: if you find yourself writing conditional logic that depends on exact values, trying to parse JSON in a skill body, or wishing you had access to `ctx.hasUI` - you need an extension. Next post is about exactly that.
+
+### A Management Skill That Earned Its Keep
+
+I want to flag one non-coding use case that surprised me, because part 1 was too developer-heavy in its examples and the honest editorial voice needs to start here.
+
+I run a weekly platform report that pulls live data from Confluence, Jira, Datadog, and GitLab - SLO health, support issues, open vulnerabilities, active epics per squad, MR throughput, the works - and synthesises it into a structured brief: an executive summary with key signals and risk areas, a metric dashboard, and a per-squad breakdown with highlights and blockers for each initiative. If I did this by hand it'd be three hours every Monday of copy-pasting dashboards into a doc and writing the narrative around them.
+
+Three skills, chained: one to pull and structure the raw signals from each source, one to group them into the report sections, one to format the final document. The orchestration pattern - gather, group, format - is the exact same three-step pipeline as the meeting brief. The only difference is the domain.
+
+## Honest Editorial - What Surprised Me, What Didn't Work
+
+Skill composition works better than I expected for workflows where each step has a clear input and output type. The orchestrator pattern is genuinely zero-cost: 20 lines of markdown that describes three sub-skills. That's all of the plumbing. No config files, no dependency graphs, no build step.
+
+What surprised me in a bad way: the LLM can "drift" in long chains. By step three or four, it sometimes reinterprets earlier instructions or skips a formatting rule. If you chain five skills without a human in the loop, the output quality degrades noticeably. My rule of thumb after building several of these: chain no more than three skills before introducing a verification step - either a human review or a skill whose only job is to validate the output of the previous step.
+
+The other limitation: there's no way to pass structured data between skills. Each skill's output is plain text, and the next skill has to re-parse it. For the meeting brief, this works fine - the LLM is excellent at reading its own output. But if you needed to carry a JSON payload with exact field names, this pattern gets fragile fast. That's when you reach for an extension.
+
+## Next Steps
+
+- Checkout next post on Pi Extensions - when skills aren't enough, extensions give you the full ExtensionAPI: events, commands, TUI widgets, and precision control
+- [Pi Packages documentation](https://pi.dev/docs/latest/packages) - deeper dive into the `pi` manifest, filtering, and publishing to npm vs git
+- [Agent Skills standard](https://agentskills.io) - for cross-agent compatibility of the skills you write
