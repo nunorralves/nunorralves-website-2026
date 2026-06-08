@@ -1,0 +1,437 @@
+---
+title: "Pi Extensions: Deep Lifecycle Integration"
+date: "2026-06-08"
+tags: [pi, extensions, ai-agents, typescript]
+published: true
+description: "Skills teach the LLM what to do. Extensions teach Pi what to become. Build a safety gate, a custom slash command, and a context injector - and learn when to reach for code over markdown."
+# series: pi
+# series_part: 4
+# series_phase: Foundation → Craft transition
+---
+
+Skills teach the LLM what to do. Extensions teach Pi what to become.
+
+In the last three posts we built skills - markdown files that tell Pi how to extract action items, categorise by owner, format briefs. They work because the LLM reads instructions and follows them. But the moment you need to intercept a dangerous bash command before it executes, or add a `/jira` slash command, or inject project context into every conversation before the model sees it - you've hit the markdown ceiling. You need code. You need extensions.
+
+Extensions are TypeScript modules that hook into Pi's lifecycle. Events fire at every meaningful moment - session start, user input, before each LLM call, before and after every tool execution. Your extension listens to the events it cares about and returns instructions. Block. Transform. Inject. Notify. It's the difference between suggesting what Pi should do and controlling what Pi actually does.
+
+## What You'll Build
+
+By the end of this post you'll have three extensions loaded into your Pi project:
+
+1. **Safety Gate** - blocks dangerous bash commands (`rm -rf`, `sudo`, `DROP TABLE`) with a confirm dialog. Ten lines of event handler logic, immediate practical value.
+2. **Custom Slash Command** - `/jira` that fetches issue details from your Jira instance. Teaches commands, argument handling, and API integration.
+3. **Context Injector** - enriches every prompt with your current project status - active workstreams, recent decisions, open questions. The non-coding use case that makes extensions genuinely useful for knowledge workers.
+
+Each one demonstrates a different dimension of the ExtensionAPI. Combined, they're the toolkit you'll draw from when building anything non-trivial.
+
+> 📦 **GitHub Repository:** All extension examples from this post are at
+> [github.com/nunorralves/blog-lab/tree/main/tech/pi-extensions](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-extensions)
+
+## Prerequisites
+
+- Pi version: `>=0.75.4`
+- Node.js: `>=18`
+- Read posts [01](/posts/2026-05-18-pi-coding-agent) through [03](/posts/2026-06-03-pi-skills-part-2) - this post assumes you understand the `.pi/` directory structure, have written at least one skill, and know what `SKILL.md` frontmatter looks like
+- TypeScript basics: imports, async functions, typed parameters
+
+For Extension 2 you'll need a Jira instance with an API token (or adapt the example to any REST API - the pattern is what matters).
+
+## The Skills Ceiling, Revisited
+
+Post 03 closed with a decision rule: use a skill for language-structured workflows, reach for an extension when you need precise computation, event interception, or custom commands. Let's make that concrete.
+
+Here's what a skill cannot do:
+- Intercept a tool call before it runs and block it
+- Add a custom slash command with argument parsing
+- Modify the system prompt dynamically based on project state
+- Show a confirm dialog in the TUI
+- Call an external API directly (the LLM can suggest curl commands, but an extension can make the HTTP call, parse the response, and format it before the model sees it)
+
+Here's what an extension gives you that a skill never will:
+- Every lifecycle event as a hook point
+- The TUI: dialogs, notifications, status bars, widgets
+- TypeScript: precise logic, data validation, API calls
+- The `ExtensionContext`: session state, model registry, abort signals
+
+The tradeoff is real: extensions require TypeScript and lifecycle awareness. Skills require neither. Every post so far has been zero-code. This one isn't. That's the point.
+
+## Extension Architecture
+
+An extension is a TypeScript file that exports a default factory function. Pi calls it at startup with the `ExtensionAPI` object, and your code subscribes to events:
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.on("session_start", async (_event, ctx) => {
+    if (ctx.hasUI) {
+      ctx.ui.notify("Extension loaded!", "info");
+    }
+  });
+}
+```
+
+That's the entire skeleton. One import, one export, one event subscription. The `pi` object is your interface to everything: `pi.on()` for events, `pi.registerCommand()` for slash commands, `pi.registerTool()` for LLM-callable tools, `pi.sendMessage()` for injecting custom messages.
+
+Extensions live in `.pi/extensions/` (project-local) or `~/.pi/agent/extensions/` (global). Pi discovers them automatically on startup. For quick testing, skip discovery entirely:
+
+```bash
+pi -e ./my-extension.ts
+```
+
+This loads your extension without installing it anywhere - your main feedback loop while building.
+
+### Where to put your extension
+
+| Style | Path | When to use |
+|---|---|---|
+| Single file | `.pi/extensions/my-ext.ts` | Under 100 lines, one concern |
+| Directory | `.pi/extensions/my-ext/index.ts` | Multiple files, shared utilities |
+| Package | `.pi/extensions/my-ext/` with `package.json` | npm dependencies needed |
+
+For this post we'll use the single-file style. It keeps the examples focused on the API, not the file structure.
+
+### The Event Lifecycle (what you need to know)
+
+```
+pi starts
+  └─► session_start ──── you can initialise state, log startup
+      │
+      ▼
+user sends prompt
+  ├─► input ──────────── transform or handle the raw text
+  ├─► before_agent_start ─ inject messages, modify system prompt
+  │
+  │   ┌─── turn (repeats) ──────────────────┐
+  │   ├─► tool_call ──── block dangerous ops │
+  │   └─► tool_result ── modify tool output  │
+  └───
+```
+
+Seven events cover 90% of extension use cases. The other events in the full lifecycle (model selection, compaction, session switching) matter for advanced workflows. For this post we'll use `session_start`, `tool_call`, and `before_agent_start` - the three that unlock the examples we're building.
+
+> ⚠️ **Common mistake:** Don't put `pi.registerCommand()` inside an event handler. Commands must be registered at extension load time - top-level in the factory function. Event handlers run later, and commands registered there won't appear in the slash command menu.
+
+## Extension 1: Safety Gate
+
+The lowest-friction entry to extensions: intercept a dangerous bash command and ask for confirmation. Ten lines of handler logic, one event, immediate practical value.
+
+**`.pi/extensions/safety-gate.ts`**
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  const DANGEROUS_PATTERNS = [
+    "rm -rf",
+    "sudo rm",
+    "DROP TABLE",
+    "DROP DATABASE",
+    "format C:",
+    "> /dev/sda",
+    "mkfs.",
+    "dd if=",
+    ":(){ :|:& };:",  // fork bomb
+    "chmod 777",
+  ];
+
+  pi.on("tool_call", async (event, ctx) => {
+    // Only intercept bash tool calls
+    if (!isToolCallEventType("bash", event)) return;
+
+    const cmd = event.input.command;
+    const matched = DANGEROUS_PATTERNS.find((p) => cmd.includes(p));
+
+    if (!matched) return; // Nothing dangerous, let it run
+
+    // In non-interactive mode (print, JSON), block without asking
+    if (!ctx.hasUI) {
+      return { block: true, reason: `Blocked dangerous pattern: "${matched}"` };
+    }
+
+    // Interactive mode: ask the user
+    const ok = await ctx.ui.confirm(
+      "Dangerous Command Detected",
+      `Pi wants to run:\n\n  ${cmd.slice(0, 120)}${cmd.length > 120 ? "..." : ""}\n\nMatched pattern: "${matched}"\n\nAllow this command?`
+    );
+
+    if (!ok) {
+      return { block: true, reason: `User blocked command matching "${matched}"` };
+    }
+    // User confirmed — let it run (return nothing = pass through)
+  });
+}
+```
+
+The pattern is the same for any guard: subscribe to `tool_call`, check if the tool type matches your concern, inspect the input, and return `{ block: true }` to stop it. No return value = proceed normally.
+
+`isToolCallEventType("bash", event)` is the type-narrowing helper. It tells TypeScript that `event.input` has a `.command` field. Without it you'd be casting `event.input` manually.
+
+> ✅ **Checkpoint:** Create `safety-gate.ts` in `.pi/extensions/`. Start Pi with `pi -e .pi/extensions/safety-gate.ts` and type `run rm -rf /tmp/test` as a prompt. You should see a confirm dialog. Try declining it - the command should be blocked with a reason shown in the TUI.
+
+### What makes this a good first extension
+
+The safety gate delivers value immediately - you install it and it protects you from the moment Pi starts. It also teaches the core extension pattern without distractions: subscribe to an event, inspect the payload, return a decision. Everything else builds on this.
+
+> ⚠️ **Common mistake:** Don't rely on pattern matching for true security. This guards against accidents and obvious attacks, not a determined adversary. An LLM told to bypass it can rephrase commands. This is a guardrail, not a sandbox.
+
+## Extension 2: Custom Slash Command (`/jira`)
+
+Commands are the user-facing entry point for extensions. They appear in the slash command menu alongside built-in commands like `/model` and `/new`. Unlike event handlers which fire automatically, commands are invoked explicitly by the user.
+
+We'll build a `/jira` command that fetches issue details from the Jira REST API. The pattern transfers to any external API: GitHub issues, Linear, Notion, your own internal tools.
+
+**`.pi/extensions/jira-command.ts`**
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  // Pull from env vars — never hardcode tokens
+  const JIRA_BASE_URL = process.env.JIRA_BASE_URL;
+  const JIRA_EMAIL = process.env.JIRA_EMAIL;
+  const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
+
+  pi.registerCommand("jira", {
+    description: "Fetch Jira issue details — usage: /jira ISSUE-123",
+    handler: async (args, ctx) => {
+      // Validate args
+      if (!args || !args.trim()) {
+        ctx.ui.notify("Usage: /jira ISSUE-123", "warning");
+        return;
+      }
+
+      const issueKey = args.trim().toUpperCase();
+
+      // Validate config
+      if (!JIRA_BASE_URL || !JIRA_EMAIL || !JIRA_API_TOKEN) {
+        ctx.ui.notify(
+          "Missing Jira config. Set JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN env vars.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        const url = `${JIRA_BASE_URL}/rest/api/3/issue/${issueKey}`;
+        const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            Accept: "application/json",
+          },
+          signal: ctx.signal, // Respect Pi's abort signal
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            ctx.ui.notify(`Issue ${issueKey} not found`, "warning");
+          } else {
+            ctx.ui.notify(
+              `Jira API returned ${response.status}: ${response.statusText}`,
+              "error"
+            );
+          }
+          return;
+        }
+
+        const issue = await response.json() as {
+          key: string;
+          fields: {
+            summary: string;
+            status: { name: string };
+            assignee?: { displayName: string };
+            priority?: { name: string };
+          };
+        };
+
+        // Format and inject a custom message into the session
+        const summary = issue.fields.summary;
+        const status = issue.fields.status.name;
+        const assignee = issue.fields.assignee?.displayName ?? "Unassigned";
+        const priority = issue.fields.priority?.name ?? "None";
+
+        const message = [
+          `**${issue.key}** — ${summary}`,
+          `Status: ${status} | Assignee: ${assignee} | Priority: ${priority}`,
+          `🔗 ${JIRA_BASE_URL}/browse/${issue.key}`,
+        ].join("\n");
+
+        // Option 1: Inject into conversation so the model sees it
+        pi.sendMessage(
+          {
+            customType: "jira-command",
+            content: message,
+            display: true,
+          },
+          { triggerTurn: false }
+        );
+
+        // Option 2: Show a notification (always visible, doesn't consume context)
+        ctx.ui.notify(`${issueKey}: ${summary}`, "info");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        ctx.ui.notify(`Jira fetch failed: ${msg}`, "error");
+      }
+    },
+  });
+}
+```
+
+Three things happening here that a skill can't do:
+
+1. **HTTP call with abort support** - `fetch()` with `ctx.signal` means Pi can cancel the request if the user hits Escape. Skills can only describe what curl to run.
+2. **Structured error handling** - 404, auth failure, network error - each gets a different response. Skills rely on the LLM interpreting error output.
+3. **Dual output channels** - the issue appears as both a custom message in the conversation (so the model can reference it) and a notification toast (so the user sees it instantly).
+
+> ✅ **Checkpoint:** Set `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` as environment variables. Start Pi with `pi -e .pi/extensions/jira-command.ts`. Type `/jira` and verify the command appears in autocomplete. Run `/jira ISSUE-123` (replace with a real issue key). You should see the issue summary as a notification and a custom message in the conversation.
+
+### When to use `pi.sendMessage()` vs `ctx.ui.notify()`
+
+| Method | Visible to | Consumes context? | Use for |
+|---|---|---|---|
+| `ctx.ui.notify()` | User only | No | Alerts, status, quick feedback |
+| `pi.sendMessage({ display: true })` | User + LLM | Yes | Data the model should act on |
+| `pi.sendMessage({ display: false })` | LLM only | Yes | Hidden steering instructions |
+
+For `/jira`, I'm sending both. The notification gives instant feedback. The custom message gives the model the issue context for follow-up questions like "summarise that issue" or "what's blocking it?"
+
+## Extension 3: Context Injector
+
+This is where extensions earn their keep for non-coding work. Every Pi session starts fresh - the model knows nothing about your project unless you tell it. A context injector enriches every prompt with structured project status automatically, so you never have to repeat "here's what we're working on."
+
+Most context injector examples lean on code metadata: git branch, file list, recent commits. That's useful. But the pattern is more interesting when the injected context is about work, not code.
+
+**`.pi/extensions/project-context.ts`**
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+export default function (pi: ExtensionAPI) {
+  // Load a project context file — if it exists at the project root,
+  // inject its contents before every agent turn.
+  // If it doesn't exist, the extension is a no-op.
+
+  let contextBlock: string | null = null;
+
+  pi.on("session_start", async (_event, ctx) => {
+    const contextPath = path.join(ctx.cwd, ".pi", "project-context.md");
+
+    try {
+      if (fs.existsSync(contextPath)) {
+        contextBlock = fs.readFileSync(contextPath, "utf-8").trim();
+      }
+    } catch {
+      // File missing or unreadable — extension stays silent
+      contextBlock = null;
+    }
+  });
+
+  pi.on("before_agent_start", async (event, ctx) => {
+    if (!contextBlock) return; // No context file, nothing to inject
+
+    const injected = `\n\n## Project Context (injected by project-context extension)\n\n${contextBlock}`;
+
+    return {
+      systemPrompt: event.systemPrompt + injected,
+    };
+  });
+}
+```
+
+The extension reads a single file - `.pi/project-context.md` - from the project root. If it exists, its contents are appended to the system prompt before every agent turn. If it doesn't, the extension is invisible. No environment variables, no API config, no build step.
+
+Here's what a knowledge worker's context file might look like:
+
+**`.pi/project-context.md`**
+
+```markdown
+## Current Workstreams
+
+- **Q3 Platform Migration:** Moving reporting pipeline from legacy ETL to new stack.
+  Target: end of July. Ana owns the data layer, Marco owns API compatibility.
+- **Hiring:** Two open roles (Senior Platform, Staff SRE). Interviews ongoing.
+  Lena is the hiring manager. Referrals welcome.
+
+## Recent Decisions
+
+- 2026-06-01: Postponed Redis Cluster upgrade to Q4 — vendor stability concerns.
+  Decision owner: Marco. See Confluence: /wiki/ARCH-2026-06-01.
+- 2026-05-28: Adopted TypeScript strict mode across all new services.
+  Decision owner: Lena. RFC approved.
+
+## Active Risks
+
+- Payment timeout bug in production — intermittent, affecting ~2% of transactions.
+  Marco investigating. No RCA yet.
+- Search endpoint returning 500s under load — Ana taking this after onboarding docs.
+
+## Open Questions
+
+- Should we standardise on Bun or stay on Node 22 for the migration?
+  Decision needed by June 15.
+- Do we extend the contractor for another quarter? Budget review next week.
+```
+
+Now when you type "summarise what Ana is working on this week" into Pi, it already knows. No briefing, no preamble, no context dumping into the first prompt of the day. The extension reads the file on session start and injects it before every turn.
+
+> ✅ **Checkpoint:** Create `project-context.ts` in `.pi/extensions/` and `project-context.md` in `.pi/`. Start Pi with `-e .pi/extensions/project-context.ts`. Open a new session and type "what are our active risks?" Pi should reference the payment timeout bug and search endpoint issue from your context file without you mentioning them first.
+
+### Why this matters differently for non-developers
+
+A developer opens Pi in a codebase. The model sees file paths, reads context files, scans git history. The environment is the context. A knowledge worker opens Pi in a directory of documents, spreadsheets, and notes. The environment is sparse - there's no code to ground the conversation. The context injector fills that gap: instead of the model knowing about your codebase, it knows about your workstreams, decisions, and risks.
+
+This is the extension that changed how I use Pi for management work. Before it, every session started with five minutes of briefing. After it, I open Pi and start the conversation where I left off.
+
+## Skills vs Extensions: A Decision Framework
+
+By now you've built skills (posts 02-03) and extensions (this post). The boundary between them is the first thing every Pi user needs to internalise.
+
+| You want to... | Use a skill when... | Use an extension when... |
+|---|---|---|
+| Teach the agent a procedure | The procedure can be described in plain English and the LLM can follow it reliably | N/A — this is always a skill |
+| Structure language output | The format is a template the LLM can interpolate into | You need precise data validation (JSON schema, field presence checks) |
+| Intercept dangerous operations | N/A — skills can't intercept events | You need `tool_call` with `{ block: true }` |
+| Add a slash command | The command just triggers a skill: `/skill:my-skill` | You need argument parsing, API calls, structured error handling |
+| Integrate with an external API | The LLM can suggest curl commands and parse the output | You need auth, error handling, response parsing, or the API has side effects |
+| Inject context into every prompt | N/A — skills can't hook into `before_agent_start` | You need dynamic system prompt modification based on project state |
+| Modify tool results | N/A — skills can't intercept `tool_result` | You need to transform, filter, or enrich tool output before the model sees it |
+| Build a TUI widget | N/A — skills have no UI access | You need `ctx.ui` for dialogs, status bars, overlays, footers |
+| Chain a multi-step workflow | The steps are language-only and reliability is acceptable | High reliability requirement, or steps involve precise computation |
+| Share across machines/teams | A Pi Package with `skills/` directory | A Pi Package with `pi.extensions` in package.json |
+
+The learning curve asymmetry is real: a skill is a markdown file you can write in 30 seconds. An extension requires TypeScript, the event lifecycle, and the ExtensionAPI. But the ceiling is also asymmetric. A skill can describe what Pi should do. An extension can control what Pi actually does.
+
+My rule of thumb: start with a skill. When it breaks - when the LLM misinterprets a branch, when you need a confirm dialog, when you're writing curl commands as instructions instead of making HTTP calls directly - extract the fragile part into an extension. Most workflows start as skills and sprout one or two extensions over time.
+
+## Honest Editorial
+
+The ExtensionAPI is well-designed - the event system is consistent, the `ctx` object carries everything you need, and the TypeScript types catch mistakes before runtime. What surprised me was how quickly I wanted more events than the API exposes. There's no `before_skill_load` event - you can't transform a skill before Pi reads it. There's no `after_session_save` - you can't trigger work when a session is persisted to disk. The API covers the obvious hooks well but the gaps become apparent the moment you try to build something the designers didn't anticipate.
+
+The learning curve bit hardest on session control. `ctx.newSession()`, `ctx.fork()`, `ctx.reload()` are only available in command handlers, not event handlers - call them from an event and you deadlock. The error message is silent; Pi just hangs. I lost an hour to that before finding the footnote in the docs. The distinction between `ExtensionContext` (events) and `ExtensionCommandContext` (commands) is the single most important thing to understand before you write anything non-trivial.
+
+If I were starting over, I'd build the safety gate first - same as this post recommends - but I'd add it to my global extensions (`~/.pi/agent/extensions/`) on day one, not my project. A dangerous command guard only matters when it's always on, and project-local extensions only load when you're in that directory. Global extensions are the right home for guards, status widgets, and anything that should be universal.
+
+## Result
+
+You now have three extensions loaded:
+
+| Extension | Event/API | What it taught |
+|---|---|---|
+| Safety Gate | `tool_call` | Event interception, `{ block: true }`, `ctx.hasUI` guards |
+| `/jira` command | `registerCommand` | Slash commands, fetch + abort, `pi.sendMessage()` |
+| Context Injector | `before_agent_start` | System prompt injection, project state management, non-coding use case |
+
+You know where extensions live, how to test them with `pi -e`, the event lifecycle that matters, and the decision framework for choosing extensions over skills. More importantly, you know where the ceiling is - what the ExtensionAPI can't do yet, and where the footguns hide.
+
+## Next Steps
+
+- **Post 05: Custom Footer & TUI** - shaping the Pi interface with footer widgets, status indicators, themes, and custom overlays. Extensions have a UI dimension we haven't touched yet.
+- [Pi Extension documentation](https://pi.dev/docs/latest/extensions) - the full event reference and advanced patterns
+- Try combining ideas: a context injector that reads from Confluence, a `/sprint` command that fetches active Jira issues, a guard that blocks destructive git operations
+- The [safety-gate, jira-command, and project-context source files](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-extensions/.pi/extensions) from this post — copy-paste ready
