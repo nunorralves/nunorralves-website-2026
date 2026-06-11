@@ -5,10 +5,10 @@ test('search: finds results for query', async ({ page }) => {
 
   const input = page.locator('input[placeholder="Search posts..."]');
   await expect(input).toBeVisible({ timeout: 7000 });
-  await input.fill('Hello');
+  await input.fill('Terminal');
 
   // wait for debounce and results
   await page.waitForTimeout(600);
-  const result = page.locator('h2', { hasText: /Hello World/i }).first();
+  const result = page.locator('h2', { hasText: /Terminal Coding Agent/i }).first();
   await expect(result).toBeVisible({ timeout: 7000 });
 });
