@@ -1,0 +1,576 @@
+---
+title: "Pi Custom Footer & TUI - Shaping the Interface"
+date: "2026-06-11"
+tags: [pi, tui, themes, extensions, typescript]
+published: true
+description: "Extensions change what Pi can do. The TUI changes what Pi feels like to use. Build a custom footer with live status, a personal theme, and a prompt-picker overlay - and learn where the customization surface ends."
+# series: pi
+# series_part: 5
+# series_phase: Foundation → Craft transition
+---
+
+Extensions change what Pi can do. The TUI changes what Pi feels like to use.
+
+In the last four posts we gave Pi capabilities - skills for procedures, extensions for lifecycle hooks. But every session still looked the same: default footer, dark theme, no overlay except the occasional confirm dialog. The interface was functional. It wasn't _yours_.
+
+This post is about the layer most people skip: the terminal interface itself. Not because it's cosmetic - because a TUI that shows you what you need, when you need it, without asking, is the difference between a tool you use and a tool you inhabit.
+
+## What You'll Build
+
+By the end of this post you'll have three TUI customizations loaded:
+
+1. **Custom Footer** - replaces the default footer with live status: active model, thinking level, git branch, and a knowledge-work context indicator. The thing you glance at between turns.
+2. **Personal Theme** - a full 51-token colour theme that makes Pi look like _your_ terminal. Hot-reloads on save.
+3. **Prompt Picker Overlay** - a keyboard-navigable overlay that surfaces your most-used prompts - including management and knowledge-work ones - without typing or remembering slash commands.
+
+Each one builds on the ExtensionAPI from post 04. No new concepts - just a different dimension of the same API.
+
+> 📦 **GitHub Repository:** All examples from this post are at
+> [github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui)
+
+## Prerequisites
+
+- Pi version: `>=0.75.4`
+- Node.js: `>=18`
+- Read posts [01](/posts/2026-05-18-pi-coding-agent) through [04](/posts/2026-06-08-pi-extensions) - this post assumes you've built extensions, understand the event lifecycle, and know what `ctx.ui` is
+- A terminal with truecolor support - check with `echo $COLORTERM` (should output `truecolor` or `24bit`)
+
+## The TUI Customization Surface
+
+Before building, here's the full map of what the ExtensionAPI exposes for TUI work. Not the events - you know those from post 04. The _rendering_ surface.
+
+| API                                   | What it controls                     | Replaces or augments? |
+| ------------------------------------- | ------------------------------------ | --------------------- |
+| `ctx.ui.setFooter(factory)`           | Entire footer bar                    | Replaces              |
+| `ctx.ui.setStatus(id, text)`          | Named entry in default footer        | Augments              |
+| `ctx.ui.setWidget(id, content, opts)` | Persistent widget above/below editor | Augments              |
+| `ctx.ui.setEditorComponent(factory)`  | Input editor (the prompt area)       | Replaces              |
+| `ctx.ui.setEditorText(text)`          | Editor content programmatically      | Modifies              |
+| `ctx.ui.setWorkingIndicator(opts)`    | Streaming spinner animation          | Replaces              |
+| `ctx.ui.setTitle(text)`               | Terminal window title                | Sets                  |
+| `ctx.ui.custom(factory, opts)`        | Modal dialogs and overlays           | Creates               |
+| `ctx.ui.theme`                        | Access active theme for colour calls | Read-only             |
+
+Two patterns: **replace** (you take over, Pi's default disappears) and **augment** (you add to what's already there). `setFooter` replaces. `setStatus` augments. `setWidget` augments. Know which one you're using - replacing the footer means you're responsible for everything that was there before.
+
+## Part 1: Custom Footer
+
+The footer is the status bar at the bottom of every Pi session. By default it shows: model name, thinking level, git branch, and a clock. It's useful but generic. Replacing it is the highest-impact TUI change you can make - it's always visible, and it can show anything `footerData` exposes.
+
+### The `setFooter` API
+
+```typescript
+ctx.ui.setFooter((tui, theme, footerData) => ({
+  render(width: number): string[] {
+    return [
+      /* one or more lines, each ≤ width */
+    ];
+  },
+  invalidate(): void {
+    // Called on theme change - rebuild themed content
+  },
+  dispose: footerData.onBranchChange(() => tui.requestRender()),
+  // ↑ optional: re-render when git branch changes
+}));
+```
+
+`footerData` exposes three things:
+
+| Member                   | Returns                   | Use for                               |
+| ------------------------ | ------------------------- | ------------------------------------- |
+| `getGitBranch()`         | `string \| null`          | Current git branch                    |
+| `getExtensionStatuses()` | `Map<string, string>`     | Statuses set via `ctx.ui.setStatus()` |
+| `onBranchChange(cb)`     | `() => void` (dispose fn) | Re-render on branch switch            |
+
+The `tui` object gives you `tui.requestRender()` - call it whenever your footer's state changes and the component's `render()` doesn't automatically trigger.
+
+> ⚠️ **Common mistake:** `setFooter` **replaces** the entire footer. If you use it, the default model/thinking/clock display is gone. You must render everything yourself. If you just want to add a status entry, use `setStatus` instead.
+
+### Building a live status footer
+
+Here's a footer that shows: active model, thinking level, token usage, git branch, and a knowledge-work context indicator - whether a project context file is loaded.
+
+**`.pi/extensions/custom-footer.ts`**
+
+```typescript
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+export default function (pi: ExtensionAPI) {
+  let contextLoaded = false;
+  let currentModel = "-";
+  let thinkingLevel = "off";
+
+  pi.on("session_start", async (_event, ctx) => {
+    // Check if project-context.md exists (non-coding use case)
+    contextLoaded = fs.existsSync(
+      path.join(ctx.cwd, ".pi", "project-context.md"),
+    );
+
+    // Set up the custom footer
+    ctx.ui.setFooter((tui, theme, footerData) => {
+      // Subscribe to branch changes for live re-render
+      const disposeBranch = footerData.onBranchChange(() =>
+        tui.requestRender(),
+      );
+
+      return {
+        render(width: number) {
+          const branch = footerData.getGitBranch() ?? "no repo";
+          const contextIcon = contextLoaded
+            ? theme.fg("success", "● ctx")
+            : theme.fg("dim", "○ ctx");
+
+          // Build footer segments
+          const left = [
+            theme.fg("accent", theme.bold(` ${currentModel} `)),
+            theme.fg("muted", `think:${thinkingLevel}`),
+          ].join(" ");
+
+          const right = [contextIcon, theme.fg("dim", branch.slice(0, 20))]
+            .filter(Boolean)
+            .join(" ");
+
+          // Single-line footer: left-aligned + right-aligned with filler
+          const filler = " ".repeat(
+            Math.max(1, width - visibleLength(left) - visibleLength(right)),
+          );
+          return [left + theme.fg("dim", filler) + right];
+        },
+
+        invalidate() {
+          /* theme change - render() is re-called automatically */
+        },
+
+        dispose() {
+          disposeBranch();
+        },
+      };
+    });
+  });
+
+  // Keep model info current via events
+  pi.on("model_select", (event) => {
+    currentModel =
+      typeof event.model === "string" ? event.model : (event.model?.id ?? "-");
+  });
+
+  pi.on("agent_start", (_event, ctx) => {
+    currentModel =
+      typeof ctx.model === "string" ? ctx.model : (ctx.model?.id ?? "-");
+    // To add token usage: log JSON.stringify(ctx.getContextUsage()) to find
+    // the correct field names for your Pi version.
+  });
+
+  pi.on("thinking_level_select", (event) => {
+    thinkingLevel = event.level;
+  });
+}
+
+// Helper: string width sans ANSI codes
+function visibleLength(s: string): number {
+  return s.replace(/\x1b\[[0-9;]*m/g, "").length;
+}
+```
+
+> 📦 **Download:** [custom-footer.ts](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi/extensions/custom-footer.ts) - drop into `.pi/extensions/` and load with `pi -e .pi/extensions/custom-footer.ts`
+
+Three things happening:
+
+1. **`session_start`** installs the footer and checks for `project-context.md` - the same context file from post 04's context injector. If it exists, the footer shows a green `● ctx` indicator. If not, a dim `○ ctx`. This is the non-coding use case: a knowledge worker opens Pi in a project directory, and the footer tells them whether their work context is loaded - before they type anything.
+
+2. **`model_select`** and **`thinking_level_select`** keep the footer current when you change models or thinking levels mid-session. These are notification-only events - they fire after the change, not before.
+
+3. **`agent_start`** keeps the model name current at the start of every turn. If you switch models mid-session with `/model`, `model_select` catches it between turns.
+
+> 💡 **Extend it:** Want token usage in the footer? `ctx.getContextUsage()` returns token data, but field names vary by Pi version. Log the object with `console.log(JSON.stringify(ctx.getContextUsage()))` to find the right keys, then add your own tracking.
+
+> ✅ **Checkpoint:** Create `custom-footer.ts` in `.pi/extensions/`. Start Pi with `pi -e .pi/extensions/custom-footer.ts`. You should see a custom footer showing your active model, thinking level, and git branch. Change models with `/model` - the footer should update. Create `.pi/project-context.md` (any content) and restart - the `● ctx` indicator should appear.
+
+### When to use `setFooter` vs `setStatus`
+
+`setFooter` replaces the entire bar. You own every pixel. Use it when you want a different layout - like the custom footer above, with model on the left and context indicator on the right.
+
+`setStatus` adds an entry to the _default_ footer without touching anything else. You don't need a custom footer to use it - it works in any extension, even a tiny one that does nothing else.
+
+Here's a self-contained extension that shows a live alert count in the default footer:
+
+**`.pi/extensions/alert-status.ts`**
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.on("session_start", async (_event, ctx) => {
+    // Show a status entry in the default footer
+    ctx.ui.setStatus("alerts", ctx.ui.theme.fg("warning", "⚠ 3 alerts"));
+
+    // Clear it later - e.g., after a command
+    // ctx.ui.setStatus("alerts", undefined);
+  });
+}
+```
+
+Start with `pi -e .pi/extensions/alert-status.ts` (no custom footer loaded) and you'll see `⚠ 3 alerts` appear in the default footer alongside model/thinking/clock. No `setFooter` needed.
+
+> 📦 **Download:** [alert-status.ts](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi/extensions/alert-status.ts) — drop into `.pi/extensions/` and load with `pi -e .pi/extensions/alert-status.ts`
+
+The key difference: `setFooter` replaces the default. `setStatus` augments it. If you're using a custom footer _and_ want status entries, read them via `footerData.getExtensionStatuses()` in your footer's `render()` - they won't appear automatically.
+
+## Part 2: TUI Theming
+
+Pi ships with `dark` and `light` themes. Both are well-designed. Neither is _yours_.
+
+Themes are JSON files with 51 colour tokens - every visual element Pi renders is controlled by one of them. Custom themes hot-reload: edit the file, save, and Pi reflects the change immediately. No restart, no `/reload`.
+
+### Theme file structure
+
+**`.pi/themes/ocean.json`**
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
+  "name": "ocean",
+  "vars": {
+    "deepBlue": "#0a1628",
+    "oceanBlue": "#0077cc",
+    "brightBlue": "#00aaff",
+    "teal": "#00cccc",
+    "coral": "#ff6b6b",
+    "gold": "#ffaa33",
+    "gray": 240
+  },
+  "colors": {
+    "accent": "oceanBlue",
+    "border": "oceanBlue",
+    "borderAccent": "brightBlue",
+    "borderMuted": "gray",
+    "success": "#00cc66",
+    "error": "coral",
+    "warning": "gold",
+    "muted": "gray",
+    "dim": 237,
+    "text": "",
+    "thinkingText": "gray",
+    "selectedBg": "#0d2137",
+    "userMessageBg": "#0d2137",
+    "userMessageText": "",
+    "customMessageBg": "#0d1a2e",
+    "customMessageText": "",
+    "customMessageLabel": "brightBlue",
+    "toolPendingBg": "#0d1a2e",
+    "toolSuccessBg": "#0d2e1a",
+    "toolErrorBg": "#2e1a1a",
+    "toolTitle": "oceanBlue",
+    "toolOutput": "",
+    "mdHeading": "gold",
+    "mdLink": "brightBlue",
+    "mdLinkUrl": "gray",
+    "mdCode": "teal",
+    "mdCodeBlock": "",
+    "mdCodeBlockBorder": "gray",
+    "mdQuote": "gray",
+    "mdQuoteBorder": "gray",
+    "mdHr": "gray",
+    "mdListBullet": "teal",
+    "toolDiffAdded": "#00cc66",
+    "toolDiffRemoved": "coral",
+    "toolDiffContext": "gray",
+    "syntaxComment": "gray",
+    "syntaxKeyword": "oceanBlue",
+    "syntaxFunction": "#0099cc",
+    "syntaxVariable": "gold",
+    "syntaxString": "#00cc66",
+    "syntaxNumber": "#cc66cc",
+    "syntaxType": "#0099cc",
+    "syntaxOperator": "oceanBlue",
+    "syntaxPunctuation": "gray",
+    "thinkingOff": "gray",
+    "thinkingMinimal": "oceanBlue",
+    "thinkingLow": "#0099cc",
+    "thinkingMedium": "teal",
+    "thinkingHigh": "#cc66cc",
+    "thinkingXhigh": "coral",
+    "bashMode": "gold"
+  }
+}
+```
+
+> 📦 **Download:** [ocean.json](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi/themes/ocean.json) - drop into `.pi/themes/` and set `"theme": "ocean"` in `settings.json`
+
+The `$schema` line gives you editor autocomplete and validation in VS Code. Include it.
+
+Key rules:
+
+- **All 51 tokens are required.** Miss one and the theme fails validation. There's no inheritance from `dark` or `light`.
+- **`vars` are reusable aliases.** Reference them by name in `colors`. They must resolve to a valid colour value (hex, 256-index, or `""`). No nested var references.
+- **`""` means "terminal default foreground."** Don't replace `"text": ""` with a hex value unless you're sure - it breaks light-mode compatibility.
+- **`export` section is optional.** It only affects `/export` HTML output, not the TUI. Omit it safely.
+
+### Colour formats
+
+| Format           | Example     | Notes                                                                 |
+| ---------------- | ----------- | --------------------------------------------------------------------- |
+| Hex              | `"#ff0000"` | 6-digit RGB. Pi uses 24-bit colour.                                   |
+| 256-colour       | `39`        | xterm index 0-255. Indices 16-231 are the RGB cube (most consistent). |
+| Variable         | `"primary"` | References a `vars` entry.                                            |
+| Terminal default | `""`        | Inherits terminal foreground/background.                              |
+
+Avoid indices 0-15 (basic ANSI) - they vary by terminal and colour scheme. Stick to 16-255 or hex.
+
+### Theme discovery
+
+| Location                             | Scope                   |
+| ------------------------------------ | ----------------------- |
+| Built-in `dark`, `light`             | Always available        |
+| `~/.pi/agent/themes/*.json`          | Global (all projects)   |
+| `.pi/themes/*.json`                  | Project-local           |
+| Pi Package `themes/` directory       | From installed packages |
+| `settings.json` → `"theme": "ocean"` | Active theme selection  |
+
+On first run, Pi auto-detects your terminal background and picks `dark` or `light`. After that, it remembers your choice via `settings.json`.
+
+> ✅ **Checkpoint:** Create `.pi/themes/ocean.json` with the theme above (or write your own - just include all 51 tokens). Set `"theme": "ocean"` in `.pi/settings.json`. Start Pi. Edit a colour in `ocean.json` and save - the TUI should update immediately. No restart needed.
+
+### Hot-reload caveat
+
+Hot-reload only works for the _active_ theme. If you're editing `ocean.json` but `settings.json` says `"theme": "dark"`, nothing happens. Switch to the theme first, then edit.
+
+### Accessing theme colours in extensions
+
+Every `ctx.ui` method that takes a factory receives the `theme` object. Use `theme.fg(token, text)` and `theme.bg(token, text)` to colour output:
+
+```typescript
+const label = theme.fg("accent", theme.bold("Status:"));
+```
+
+Any of the 51 token names work. This is how your custom footer, widgets, and overlays stay visually consistent with the active theme - no hardcoded colours.
+
+## Part 3: Custom Overlay - Prompt Picker
+
+The last piece: an overlay that surfaces your most-used prompts without typing slash commands. A `<Ctrl+P>` for prompts.
+
+This matters differently for non-coding work. A developer's prompt menu might include "review this PR" and "explain this function." A knowledge worker's includes "summarise these meeting notes," "draft a status update from this thread," "extract action items and assign owners." The prompts themselves differ. The mechanism - a keyboard-navigable overlay - is the same.
+
+### Building the prompt picker
+
+**`.pi/extensions/prompt-picker.ts`**
+
+```typescript
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder } from "@earendil-works/pi-coding-agent";
+import {
+  Container,
+  SelectList,
+  Text,
+  Spacer,
+  Key,
+  matchesKey,
+  type SelectItem,
+} from "@earendil-works/pi-tui";
+
+interface PromptEntry {
+  id: string;
+  label: string;
+  description: string;
+  content: string; // The actual prompt text to send
+}
+
+export default function (pi: ExtensionAPI) {
+  // Register a keyboard shortcut to open the picker
+  pi.registerShortcut(Key.alt("p"), {
+    description: "Open prompt picker",
+    handler: async (ctx) => {
+      if (!ctx.hasUI) return;
+
+      const prompts: PromptEntry[] = [
+        // Development prompts
+        {
+          id: "review",
+          label: "Code Review",
+          description: "Review staged changes for correctness and clarity",
+          content:
+            "Review the staged changes for correctness, clarity, performance, and maintainability. Categorise feedback as blocking, recommendation, or nit.",
+        },
+        {
+          id: "explain",
+          label: "Explain Code",
+          description: "Explain what the selected code does",
+          content:
+            "Explain what this code does, its design decisions, and any potential issues.",
+        },
+
+        // Knowledge-work prompts (non-coding use case)
+        {
+          id: "summarise-notes",
+          label: "Summarise Notes",
+          description: "Extract key points from meeting notes",
+          content:
+            "Summarise these meeting notes: decisions made, action items with owners, and open questions. Keep it to one paragraph per topic.",
+        },
+        {
+          id: "status-update",
+          label: "Draft Status Update",
+          description: "Write a status update from the current context",
+          content:
+            "Using the project context and any recent changes, draft a concise status update: what was accomplished, what's in progress, what's blocked, and what's next.",
+        },
+        {
+          id: "extract-actions",
+          label: "Extract Action Items",
+          description: "Pull action items with owners from a thread",
+          content:
+            "Extract all action items from this discussion. For each: what needs to be done, who owns it (if mentioned), and any deadline. Format as a checklist.",
+        },
+        {
+          id: "decision-log",
+          label: "Log Decision",
+          description: "Record a decision with context and alternatives",
+          content:
+            "Record this as an architecture decision: context, decision, alternatives considered, and consequences. Follow the ADR format.",
+        },
+      ];
+
+      const items: SelectItem[] = prompts.map((p) => ({
+        value: p.id,
+        label: p.label,
+        description: p.description,
+      }));
+
+      const result = await ctx.ui.custom<string | null>(
+        (tui, theme, _kb, done) => {
+          const container = new Container();
+
+          // Header
+          container.addChild(
+            new DynamicBorder((s: string) => theme.fg("accent", s)),
+          );
+          container.addChild(
+            new Text(theme.fg("accent", theme.bold(" Prompt Picker")), 1, 0),
+          );
+          container.addChild(
+            new Text(
+              theme.fg(
+                "muted",
+                " Type to filter · Enter to select · Esc to cancel",
+              ),
+              1,
+              0,
+            ),
+          );
+          container.addChild(new Spacer(1));
+
+          const list = new SelectList(items, 8, {
+            selectedText: (t: string) => theme.fg("accent", t),
+            description: (t: string) => theme.fg("muted", t),
+          });
+
+          list.onSelect = (item) => done(item.value);
+          list.onCancel = () => done(null);
+
+          container.addChild(list);
+
+          return {
+            render: (w: number) => container.render(w),
+            invalidate: () => container.invalidate(),
+            handleInput: (data: string) => {
+              if (matchesKey(data, Key.escape)) {
+                done(null);
+                return;
+              }
+              list.handleInput(data);
+              tui.requestRender();
+            },
+          };
+        },
+        {
+          overlay: true,
+          overlayOptions: {
+            anchor: "center",
+            width: "60%",
+            maxHeight: 14,
+          },
+        },
+      );
+
+      // If the user selected a prompt, send it
+      if (result) {
+        const prompt = prompts.find((p) => p.id === result);
+        if (prompt) {
+          await pi.sendUserMessage(prompt.content);
+        }
+      }
+    },
+  });
+}
+```
+
+> 📦 **Download:** [prompt-picker.ts](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi/extensions/prompt-picker.ts) - drop into `.pi/extensions/` and load with `pi -e .pi/extensions/prompt-picker.ts`
+
+Walk through what's happening:
+
+1. **`pi.registerShortcut(Key.alt("p"), ...)`** binds the picker to ALT+P. Any key combination works - `Key.alt("k")`, `Key.ctrl("p")`, `Key.ctrlShift("o")`. The shortcut triggers the handler in any session.
+
+2. **`ctx.ui.custom(factory, { overlay: true, ... })`** creates a centred overlay at 60% width, max 14 lines tall. The `overlay: true` option means it renders on top of the conversation - not inline.
+
+3. **`SelectList`** handles keyboard navigation, fuzzy filtering, and selection. The user types to filter prompts, arrows to navigate, Enter to select. No custom input handling needed beyond Escape to cancel.
+
+4. **`pi.sendUserMessage(content)`** injects the selected prompt as if the user typed it. This triggers a new agent turn with the full prompt.
+
+> ✅ **Checkpoint:** Create `prompt-picker.ts` in `.pi/extensions/`. Start Pi with `pi -e .pi/extensions/prompt-picker.ts`. Press Alt+P. The overlay should appear with all six prompts. Type "status" - the list should filter to "Draft Status Update." Press Enter - Pi should receive the status update prompt and start a turn.
+
+### Why overlays matter more than slash commands
+
+Slash commands require you to know the command name and type it. That's fine for frequent operations - `/model`, `/new`, `/compact`. But for a library of prompts you use weekly, not hourly, a navigable list beats recall every time. The overlay is discoverable. The slash command is not.
+
+This is doubly true for non-coding prompts. A developer might remember `/skill:code-review`. A knowledge worker with "summarise notes," "draft status update," "extract action items," "log decision," and "format brief" is not going to remember five skill command names. The picker makes them visible.
+
+## What Can't Be Customized Yet
+
+Honest limits. Every post so far has closed with them, and this one has more than most - the TUI customization surface is deep in some places and shallow in others.
+
+**No token count event.** There's no `token_count_changed` event. `ctx.getContextUsage()` exists but its field names aren't in the public types - you'll need to log the object and find the right keys for your Pi version. (The footer example above skips token tracking for this reason.)
+
+**No widget placement between editor and footer.** `setWidget` accepts `aboveEditor` (default) or `belowEditor`. There's no slot between the editor and the footer bar. If you want a status line right above the footer, you're replacing the footer entirely.
+
+**No individual toggle for default footer elements.** The default footer shows model, thinking level, git branch, and clock. You can't hide the clock and keep the rest. It's all or nothing - `setStatus` to add, `setFooter` to replace. There's no `setFooterElement("clock", false)`.
+
+**Editor padding caps at 3.** `editorPaddingX` in settings goes from 0 to 3. That's it. If you want 8 columns of padding around your input, you can't have it without replacing the editor component entirely via `setEditorComponent`.
+
+**`setFooter` and `setStatus` don't compose.** Statuses set via `setStatus` only appear in the default footer. If you replace the footer with `setFooter`, you must read `getExtensionStatuses()` yourself and render them. The APIs don't compose automatically.
+
+**No `before_skill_load` event.** You can intercept tool calls, modify system prompts, and transform user input. You can't intercept a skill before Pi reads it - no transforming SKILL.md on the fly, no conditional skill loading based on project state.
+
+These aren't criticisms as much as a map of where the API wants you to go. Most TUI customization flows through `setFooter` and `ctx.ui.custom()`. The API is opinionated - it gives you broad control over the footer and overlays, and lighter touch points everywhere else.
+
+## Honest Editorial
+
+Interface customization sounds cosmetic until you use a custom footer for a week and then go back to the default. The default footer shows a clock. It's objectively the least useful thing it could show - you have a clock on your desktop, your phone, your wrist. Replacing it with token usage, context status, and active model turns the footer from decoration into instrumentation. You glance at it because it tells you something you need to know.
+
+The thing that surprised me: the `● ctx` indicator. It's a single green dot in the footer. But it changes how I open Pi. Without it, I open a session and start typing context - "here's what we're working on, here's the active risks." With it, I glance at the footer. Green dot? The context file is loaded. I start the conversation where I left off. No dot? I know I'm in a directory without project context. The indicator is trivial to implement - one `fs.existsSync` call - but it removes the ambient uncertainty of "does this session know about my work?" That's what good TUI customization does: it replaces uncertainty with a glance.
+
+If I were starting over, I'd build the custom footer before the safety gate from post 04. The safety gate protects you from a dangerous command you might run once a month. The custom footer shapes every session, every turn. It's the customization you feel most, and it takes less code than the `/jira` command.
+
+## Result
+
+You now have three TUI customizations loaded:
+
+| Customization | API                            | What it taught                                                        |
+| ------------- | ------------------------------ | --------------------------------------------------------------------- |
+| Custom Footer | `ctx.ui.setFooter()`           | Footer factory pattern, `footerData`, live state via events           |
+| Ocean Theme   | `.pi/themes/ocean.json`        | 51-token format, `vars`, hot-reload, theme discovery                  |
+| Prompt Picker | `ctx.ui.custom()` with overlay | `SelectList`, `registerShortcut`, overlay options, non-coding prompts |
+
+You know where the TUI customization surface ends - what you can replace, what you can augment, and what you can't touch yet. More importantly, you know that TUI work isn't cosmetic: a good footer is instrumentation, a good theme reduces cognitive friction, and a good overlay makes your workflows discoverable.
+
+## Next Steps
+
+- **Post 06: Pi Packages** - bundle your extensions, skills, themes, and prompts into a distributable package. Take everything you've built in posts 01-05 and make it portable.
+- [Pi TUI documentation](https://pi.dev/docs/latest/tui) - the full component reference and overlay API
+- [Pi Themes documentation](https://pi.dev/docs/latest/themes) - the 51-token reference and validation rules
+- Try combining ideas: a footer widget that shows Jira issue status from post 04's `/jira` command, theme variants for light/dark terminal backgrounds, an overlay that previews context file contents
+- The [custom-footer, ocean-theme, and prompt-picker source files](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi) from this post
