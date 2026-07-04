@@ -5,12 +5,12 @@ test('navigation: open a post from the homepage', async ({ page }) => {
   // wait for main content to load
   await page.waitForSelector('main, h1, h2', { timeout: 7000 });
 
-  // Try to click a post link by title
-  const link = page.locator('text=Terminal').first();
+  // Click the newest post by title (always on page 1)
+  const link = page.locator('text=Multi-Agent').first();
   await expect(link).toBeVisible({ timeout: 7000 });
   await link.click();
 
   // Post page contains H1 with the post title
-  const heading = page.locator('h1', { hasText: /Terminal Coding Agent/i }).first();
+  const heading = page.locator('h1', { hasText: /Pi Multi-Agent Teams/i }).first();
   await expect(heading).toBeVisible({ timeout: 5000 });
 });
