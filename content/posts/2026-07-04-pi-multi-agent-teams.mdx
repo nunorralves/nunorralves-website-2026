@@ -182,6 +182,18 @@ The rule: **every role file should name the output it produces and the output it
 
 My extension defaults to a star topology: the lead talks to every member; every member talks back to the lead. That's post 01's model. My config adds two additional layers:
 
+```
+  Star (post 01)         Peer cross-talk          With shared channel
+
+     lead                    lead                      lead
+    / | \                   / | \                     / | \
+   r  t  w                 r--t  w                   r--t  w
+                            \ | /                     \ | /
+                           [debate]                 [channel]
+```
+
+Left: every message routes through the lead. Middle: members talk directly, but context stays siloed. Right: the channel acts as a shared blackboard - any member can post context that future members pick up.
+
 ### Layer 1: Peer cross-talk
 
 Members with `canTalkTo: all` or an explicit allow-list receive a `communicate_with_agent` tool from my extension. They can consult peers directly instead of routing everything through the lead. This matters for two reasons:
@@ -248,6 +260,11 @@ The lead dispatches member A, reads the response, dispatches member B with A's o
 
 This is the natural pattern for `design-review`: reviewer checks correctness → tester probes failure modes with the reviewer's findings as context → product assesses user value against both → writer checks clarity of the evolving assessment → lead synthesises. Each pass enriches the next.
 
+```
+  lead  →  reviewer  →  tester  →  product  →  writer  →  lead
+         "correctness"  "failures"  "user val"  "clarity"   (synthesis)
+```
+
 **Tradeoff:** Sequential runs are slow. Each dispatch is a blocking model call, and the chain inherits the latency of the slowest member. But context is preserved because each dispatch receives the previous output verbatim - no compression through the lead.
 
 ### Parallel
@@ -287,7 +304,34 @@ Here's what it surfaces during a running session:
 - **Per-agent cost** - real-time dollars, not abstract token counts
 - **Budget row** - the bottom line showing turns, delegations, cost, and elapsed time against the configured caps, colour-coded: safe, warning band, or over
 
-Three things you learn from watching this widget during real sessions:
+Here's what it looks like mid-session during a `design-review`:
+
+```
+┌─ design-review (lead) ──────────────────── 3m 47s  $0.87 ─┐
+│ Agent      Status   Tok In   Tok Out   Tools   Cost         │
+│ lead       ⟳ run    2.4k     1.1k       3      $0.32       │
+│ reviewer   ✔ done   3.1k     0.9k       5      $0.28        │
+│ tester     ✔ done   1.8k     0.7k       2      $0.15        │
+│ writer     ◌ idle      -        -        -        -         │
+│ product    ◌ idle      -        -        -        -         │
+│────────────────────────────────────────────────────────│
+│ Total               7.3k     2.7k      10      $0.75        │
+│ Budget  ✔ on track  turns 2/18  deleg 3/36  $0.75/$1.75     │
+└────────────────────────────────────────────────────────┘
+```
+
+The lead is mid-turn (⟳ run), reviewer and tester have returned their assessments, writer and product haven't been dispatched yet. The Budget row shows we're comfortably within all caps - 2 of 18 turns used, $0.75 of $1.75 spent.
+
+And here's the custom footer that sits below the conversation - 2 rows, 2 columns - fed by the same extension that tracks token usage and cost:
+
+```
+teams-pi/main • session team:design-review (⏱ 4m 12s)    deepseek/deepseek-v4-pro (openrouter)
+↑7.3k ↓2.7k  cache:1.8k/0  turns:2  tools:10              ctx:██████░░░░ 58% (116.2k)  💰 $0.87
+```
+
+Top-left: project path, session type, active team, and elapsed wall-clock time. Top-right: model and provider in use. Bottom-left: cumulative input/output tokens, cache hits/misses, lead turns, and tool calls. Bottom-right: context window usage bar with percentage and absolute tokens, plus cumulative session cost. This footer is always visible - not just during team sessions. It's the same custom footer extension from post 05, extended with team-awareness and cost tracking.
+
+Three things you learn from watching these during real sessions:
 
 **Cost awareness changes delegation behaviour.** Before the widget, it's easy to dispatch speculatively - "let me just get the product perspective on this too." After, watching the cost counter tick up, you ask the harder question: does this dispatch earn its cost? The answer is "no" more often than expected.
 
