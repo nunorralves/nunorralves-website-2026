@@ -1,0 +1,361 @@
+---
+title: "Pi Multi-Agent Teams - Beyond the YAML Basics"
+date: "2026-07-04"
+tags: [pi, agents, multi-agent, teams, typescript, tui]
+published: true
+description: "Building multi-agent teams on Pi with custom extensions. Role design, communication topology, model-per-agent strategy, convergence budgets, and the TUI widget that shows where your money is going."
+# series: pi
+# series_part: 7
+# series_phase: Craft
+---
+
+[Post 01](/posts/2026-05-18-pi-coding-agent) showed you a multi-agent team in 50 lines of YAML and a bare widget. That was the teaser. This is the real thing - but with an important caveat up front:
+
+**Pi does not ship with built-in multi-agent team support.** Everything in this post - the YAML config schema, the team orchestration, peer cross-talk, convergence budgets, the TUI widget - is built on top of Pi's extension API (the same one from [post 04](/posts/2026-06-08-pi-extensions) and [post 05](/posts/2026-06-11-pi-custom-footer-tui)). It's my own team-and-chain extension, plus a custom footer extension for token and cost tracking. The YAML fields you'll see (`canTalkTo`, `crossTalk`, `budget`, and their sub-properties) are _my extension's_ config schema - not something you get by installing Pi.
+
+You could build something similar yourself using the same APIs, or use a community plugin if one exists. But the point of this post isn't "drop in this YAML and it works." It's "here's what I built, why I designed it this way, and what I learned."
+
+If post 01 was "here's what's possible," this is "here's how I actually built it and where it breaks."
+
+> 📦 **GitHub Repository:** The team configs, agent personas, and extension code from this post are at
+> [github.com/nunorralves/blog-lab/tree/main/tech/pi-multi-agent-teams](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-multi-agent-teams)
+
+The teams and agents in this post are **illustrative examples** - designed to teach the concepts clearly. They're not my actual setup. The YAML schema (`canTalkTo`, `crossTalk`, `budget`, etc.) is defined by my custom team extension, not by Pi itself. I'll walk through what I really run day to day in post 09, once the series has earned the context to make that tour meaningful.
+
+## The YAML, Field by Field
+
+[Post 01](/posts/2026-05-18-pi-coding-agent) introduced multi-agent with a minimal config - `name`, `agents`, `canTalkTo`, and `model` in a simple star topology. That looks something like this:
+
+```yaml
+# .pi/teams/basic.yaml - the Post 01 starting point
+name: basic
+model: claude-opus-4-8
+
+agents:
+  lead:
+    description: "Team lead - owns the conversation and final decision."
+  reviewer:
+    description: "Reviews for correctness and completeness."
+  tester:
+    description: "Identifies failure modes and edge cases."
+
+canTalkTo:
+  - lead: [reviewer, tester]
+  - reviewer: [lead]
+  - tester: [lead]
+```
+
+That gets you started. My team extension's config has more dimensions. Here's a `design-review` team - lead, reviewer, tester, writer, and product validate a technical design from five angles - annotated:
+
+```yaml
+# .pi/teams/design-review.yaml
+description: >-
+  Multi-perspective technical design review. Lead frames
+  the problem and owns the decision; reviewer assesses
+  correctness and security; tester identifies failure modes
+  and testability gaps; writer reviews the spec itself for
+  clarity and completeness; product assesses user value and
+  stakeholder impact. Produces a consolidated design
+  assessment with verdict, risks, and open questions.
+lead: lead
+model: claude-opus-4-8
+
+members:
+  lead: { canTalkTo: all }
+  reviewer: { canTalkTo: all }
+  tester: { canTalkTo: all }
+  writer: { canTalkTo: [lead, product] }
+  product: { canTalkTo: all }
+
+crossTalk:
+  maxDepth: 3
+  maxFanout: 4
+  channelTokenBudget: 1500
+
+budget:
+  maxLeadTurns: 18
+  maxDelegations: 36
+  maxCostUsd: 1.75
+  softWarnAt: 0.8
+  advisoryWallClockMs: 600000
+```
+
+Let's go field by field. Skip one and something breaks in a way you won't notice until you're deep into a session.
+
+### `description`
+
+Not cosmetic. `pi --team list` prints it because my extension registers a custom command. More importantly, it injects the description into the lead's system prompt as context. A one-liner like "code review team" gives the lead nothing to work with. A description that names what the team produces, how each member contributes, and what it explicitly does NOT produce - that changes how the lead delegates.
+
+### `lead`
+
+The agent ID of the team lead. My extension boots this persona first - it owns the conversation with the user. It's composed as `universal-voice` → `team-lead` → `role-persona`. The `team-lead` base layer - loaded from `.pi/agents/_base/team-lead.md` - adds orchestration heuristics that apply regardless of the lead's domain role: proactive delegation, conflict routing into peer debate, budget tracking, and synthesis discipline.
+
+The lead is long-lived - it persists across turns, maintains the conversation history, and is the only agent the user talks to directly. Members are one-shot: dispatched, run to completion, dormant until called again. This matters for cost: the lead accumulates token history across turns; members pay only for their dispatch.
+
+### `members`
+
+A map of agent IDs to their team-specific config. Each member entry can carry:
+
+| Field        | Values                          | Meaning                                           |
+| ------------ | ------------------------------- | ------------------------------------------------- |
+| `model`      | `"claude-haiku-4-5"`            | Override the team-level model per member          |
+| `provider`   | `"anthropic"`                   | Override provider per member (rare, but possible) |
+| `canTalkTo`  | `"all"` \| `[id, …]` \| omitted | Who this member may peer-delegate to              |
+| `subscribes` | `[topic, …]`                    | Topic filter for shared channel posts             |
+
+The empty/null form - `tester: ~` - means "responds only to the lead." No peer communication. That's the right default for most members. More on this in the topology section.
+
+### `crossTalk`
+
+Peer-to-peer guardrails. Without them, a team can loop or fan out without bound. Three controls:
+
+**`maxDepth`** (default 3). The chain length limit for a delegation path: lead → member → peer → … . At depth 3, a member dispatched by the lead can delegate to its own peer, and that peer can delegate once more. After that, delegation returns an error and the model must consolidate. This stops infinite opinion-seeking.
+
+**`maxFanout`** (default 4). How many peers one agent can dispatch in a single turn. Prevents an over-eager member from pinging the entire team. Reset at the start of each lead turn.
+
+**`channelTokenBudget`** (default 1500). Token cap my extension applies when injecting shared channel posts into a prompt. The channel is an append-only blackboard - every `post_to_channel` call lands there - but you can't inject the whole history into every prompt. This budget keeps it bounded.
+
+### `budget`
+
+The convergence budget. This is the feature that separates a productive multi-agent session from a runaway token burn. Five dimensions:
+
+| Dimension             | Hard/Advisory | Default | What it does                                     |
+| --------------------- | ------------- | ------- | ------------------------------------------------ |
+| `maxLeadTurns`        | Hard          | 20      | Refuses new delegations after N lead turns       |
+| `maxDelegations`      | Hard          | 40      | Refuses after N total dispatch calls (lead+peer) |
+| `maxCostUsd`          | Hard          | $2.00   | Refuses after cumulative session spend hits cap  |
+| `softWarnAt`          | N/A           | 0.8     | Warns at 80% of any hard cap                     |
+| `advisoryWallClockMs` | Advisory      | 600000  | Nudges at 10 min, never blocks                   |
+
+Why is wall-clock advisory only? Because model latency varies wildly across providers - the same logical work can take 30 seconds on one and 5 minutes on another. Turns, delegations, and cost are reproducible properties of the work itself. Time measures the environment, not the work. Set any dimension to `0` to disable it.
+
+The enforcement path: my extension injects a Team Budget status block into the lead's prompt every turn showing usage vs caps. At the `softWarnAt` threshold (default 80%), it warns the lead to stop opening new threads and converge. Once a hard cap trips, new delegations are refused, and the lead is instructed to deliver its current best recommendation and flag what's unresolved.
+
+## Good Roles vs Bad Roles
+
+A role definition in Pi is the agent's `.md` file in `.pi/agents/`. The YAML maps an ID to that file. A good role definition makes the agent useful without the lead having to micro-instruct it. A bad one wastes tokens on a personality that produces the same output as a generic model.
+
+**Bad role definition:**
+
+```
+You are an expert reviewer. Be thorough. Find every issue.
+Think critically about the design.
+```
+
+This generates verbose, unanchored output. The agent doesn't know what it's supposed to _produce_, so it produces everything. Every dispatch costs tokens for an essay.
+
+**Good role definition** (the `tester` agent from the repo):
+
+```
+You are the tester. Given a technical design, you assess
+it for testability and failure modes.
+
+- What breaks? Identify specific failure modes under edge
+  cases: empty state, high load, malformed input, concurrent
+  access, partial failure.
+- What's hard to test? Flag components or interactions that
+  are difficult to validate.
+- What's the test strategy? Suggest what kinds of tests
+  would catch the issues you've identified.
+
+You do NOT propose design changes. You do NOT review code
+quality. You identify what needs testing and where testing
+will be difficult.
+
+Output format:
+- Failure modes: <2-4 specific scenarios>
+- Testability concerns: <1-3 hard-to-test areas>
+- Test strategy hint: <one sentence>
+```
+
+This works because:
+
+1. **It names the output format.** The agent knows exactly what to produce - a structured list, not an essay.
+2. **It draws boundaries.** "You do NOT propose design changes. You do NOT review code quality." The tester finds failure modes. The reviewer checks correctness. The lead decides. No role creep.
+3. **It's domain-grounded.** The output categories (failure modes, testability concerns, strategy hint) are concrete and immediately usable.
+
+The difference between these two role definitions is the difference between a dispatch that returns usable material and one that returns 400 words you'll delete.
+
+The rule: **every role file should name the output it produces and the output it does NOT produce.** If you can't fill in "this agent produces X, and only X, in format Y," the role isn't sharp enough.
+
+## Communication Topology
+
+My extension defaults to a star topology: the lead talks to every member; every member talks back to the lead. That's post 01's model. My config adds two additional layers:
+
+### Layer 1: Peer cross-talk
+
+Members with `canTalkTo: all` or an explicit allow-list receive a `communicate_with_agent` tool from my extension. They can consult peers directly instead of routing everything through the lead. This matters for two reasons:
+
+**It reduces lead-turns.** In a star topology, if the reviewer and tester disagree about whether an issue is critical, the lead must relay the disagreement manually - two extra delegations. With peer cross-talk, the reviewer dispatches the tester directly, they resolve, and the lead receives a joint recommendation. One delegation saved.
+
+**It prevents telephone.** Every relay through the lead introduces compression loss. The lead paraphrases the reviewer's concern, the tester responds to the paraphrase, the lead paraphrases the response. By the third hop, nuance is gone. Direct peer debate preserves the original arguments.
+
+### Layer 2: Shared channel
+
+My extension gives every team member - lead and delegates - a `post_to_channel` tool that writes to an append-only blackboard. The lead sees recent-within-budget posts each turn. Each one-shot delegate sees a delta - only posts added since it last ran.
+
+The channel solves a coordination problem: how does a dispatched member share context with future members without the lead manually relaying? Example: the reviewer posts "The auth flow in section 3 has a session-invalidation race condition - needs scrutiny." The tester, dispatched next, already has the context and can probe that specific area. The lead didn't touch it.
+
+The optional `topic` field on channel posts enables subscribe filtering. A member with `subscribes: [scope]` only sees channel posts tagged `scope`. Untagged posts always pass through. Useful when a team has parallel workstreams - you don't want the writer's clarity notes cluttering the reviewer's security analysis.
+
+### Why not everything talks to everything
+
+The `all` setting on `canTalkTo` is convenient but expensive. Every peer with unrestricted access can dispatch every other peer. In a 5-member team, that's a combinatorially large conversation graph. Three reasons to gate:
+
+1. **Token cost.** Every peer-to-peer dispatch is an additional model call. A fully connected team can silently double the session cost. You won't notice until the bill arrives.
+2. **Role integrity.** The tester identifies failure modes. The reviewer checks correctness. If they debate each other before producing their respective outputs, you get distracted testing and incomplete review. Sequential gates preserve role clarity better than a fully connected graph.
+3. **Convergence speed.** An unrestricted graph makes it easy for a team to circle forever - "let me just get one more opinion." The budget catches this, but a deliberate topology prevents it.
+
+The rule: `canTalkTo: all` is for the lead's direct reports who need broad access. Everyone else gets an explicit allow-list. The default - omitted `canTalkTo` - is lead-only, and that's right for at least half the members in any team.
+
+## Model-Per-Agent Strategy
+
+The team config lets you set a model at the team level and override it per member. This isn't cosmetic - it's the single biggest cost lever you control.
+
+### The pattern: cheap scouts, expensive synthesis
+
+Not every role needs the strongest model. The writer checking clarity and the tester identifying failure modes are doing focused, pattern-matching work - a cheaper model handles it well. The lead's synthesis - the thing the user actually reads - earns a strong model.
+
+Here's a sensible split for the `design-review` team:
+
+| Agent    | Model               | Reasoning                                                                     |
+| -------- | ------------------- | ----------------------------------------------------------------------------- |
+| Lead     | `claude-opus-4-8`   | Synthesis + user conversation. Earns the strongest model.                     |
+| Reviewer | `claude-sonnet-4-6` | Correctness and security assessment needs reasoning depth.                    |
+| Tester   | `claude-haiku-4-5`  | Failure-mode identification is pattern-matching. Cheaper models do this well. |
+| Product  | `claude-sonnet-4-6` | User-value assessment degrades noticeably on weaker models.                   |
+| Writer   | `claude-haiku-4-5`  | Clarity and completeness checks are structured, narrow-scope tasks.           |
+
+A full design review with these assignments: 1 lead turn (Opus) + 4 dispatches (2 Haiku, 2 Sonnet) = roughly $0.80–1.10. The same run with Opus everywhere: $3.00+. The convergence budget would kill it before it finished.
+
+Again, this is the illustrative split for the example team. My actual per-agent model choices - and the real cost data behind them - are part of the post 09 walkthrough.
+
+### When cheap models backfire
+
+There's a `spec-check` team in the repo - a lighter-weight variant where reviewer, tester, and writer run in parallel for fast turnaround. Running the reviewer on a cheap model for a non-trivial spec produces shallow correctness analysis: it approves designs that should have been flagged because the model can't hold the full context and trace causal chains.
+
+The lesson: **cheap models work for tasks with narrow context windows.** Checking clarity of a spec section? Cheap model. Judging whether a distributed system design handles partial failure correctly? That needs a model that can hold substantial context and reason about downstream consequences. Saving a few cents on the correctness pass costs a re-review.
+
+The rule: if a role's output is read by the user directly (lead synthesis), or it makes assessments with cascading consequences (reviewer evaluating correctness, product assessing user value), use a strong model. If it's a narrow, well-scoped task whose output is consumed by another agent not the user, the cheaper model earns its keep.
+
+## Orchestrator Patterns
+
+Teams don't have a fixed execution pattern - the lead decides how to deploy members based on the prompt context. But three patterns emerge from repeated use:
+
+### Sequential
+
+The lead dispatches member A, reads the response, dispatches member B with A's output as context, reads B's response, dispatches C, and so on. Each step depends on the previous.
+
+This is the natural pattern for `design-review`: reviewer checks correctness → tester probes failure modes with the reviewer's findings as context → product assesses user value against both → writer checks clarity of the evolving assessment → lead synthesises. Each pass enriches the next.
+
+**Tradeoff:** Sequential runs are slow. Each dispatch is a blocking model call, and the chain inherits the latency of the slowest member. But context is preserved because each dispatch receives the previous output verbatim - no compression through the lead.
+
+### Parallel
+
+The lead dispatches multiple members simultaneously on independent sub-tasks. All run concurrently; the lead collects responses and synthesises.
+
+This is the pattern for `spec-check`: reviewer, tester, and writer all run at once on the same spec. Each produces an independent assessment. The lead (reviewer) collects and synthesises. A three-member dispatch that takes 30 seconds per member finishes in 30 seconds, not 90.
+
+**Tradeoff:** Parallel dispatches can't cross-reference. The tester doesn't see the reviewer's findings, and the writer doesn't react to the tester's concerns. The synthesis burden is entirely on the lead. Use parallel when the sub-tasks are genuinely independent; use sequential when they build on each other.
+
+### Hierarchical
+
+The lead dispatches member A, who dispatches members B and C as peers, who may dispatch further. This is the `maxDepth > 1` cross-talk graph.
+
+Consider a `design-review` session where the lead dispatches the reviewer, who discovers a suspicious data-flow pattern and dispatches the tester directly to probe that specific path for failure modes. The tester confirms a race condition, reports back to the reviewer, who incorporates it into the correctness assessment. The lead receives one consolidated review instead of coordinating three sequential dispatches.
+
+**Tradeoff:** Hierarchical chains are hard to debug. You're tracing a conversation path through multiple agents, and reconstructing "who said what to whom" requires reading the session log. Use only when the intermediate agent genuinely needs to _probe_ something before returning - not just to save the lead a turn.
+
+### Which pattern when
+
+| If…                                                            | Use…                                    |
+| -------------------------------------------------------------- | --------------------------------------- |
+| Each step depends on the previous                              | Sequential                              |
+| Sub-tasks are independent and you want speed                   | Parallel                                |
+| An intermediate agent needs to verify/consult before answering | Hierarchical                            |
+| You're not sure                                                | Sequential. It's slower but debuggable. |
+
+## The TUI Team Widget
+
+Once you have a team running, you want visibility into what's happening without reading session logs. My team extension provides a live dashboard widget above the conversation - a line table that updates as agents are dispatched and return. The same custom footer extension that tracks token usage and cost per session feeds the widget its data.
+
+Here's what it surfaces during a running session:
+
+- **Per-agent status** - active, done, or idle - so you know who's working
+- **Token counts** (input/output) and context window usage per agent - critical for spotting over-briefed delegates before their output goes shallow
+- **Tool call count** - tells you if an agent is working or just producing text
+- **Per-agent cost** - real-time dollars, not abstract token counts
+- **Budget row** - the bottom line showing turns, delegations, cost, and elapsed time against the configured caps, colour-coded: safe, warning band, or over
+
+Three things you learn from watching this widget during real sessions:
+
+**Cost awareness changes delegation behaviour.** Before the widget, it's easy to dispatch speculatively - "let me just get the product perspective on this too." After, watching the cost counter tick up, you ask the harder question: does this dispatch earn its cost? The answer is "no" more often than expected.
+
+**Context usage is the silent budget killer.** When you see an agent at 45% context usage after a single turn, the dispatch brief was too large - the lead dumped the entire spec into the message. The fix: write shorter, more focused briefs. A dispatch brief longer than a paragraph is usually unecessary.
+
+**The resume indicator changes how you recover from interruption.** When you resume an interrupted session, a clear indicator shows which members completed before the interruption and which are still pending. Without this, you'd have to read the session log to know what's left.
+
+The widget is part of the same extension stack - the lifecycle hooks and UI surface from post 05, wired to the team's dispatch and budget state. Register a widget on session start, update it on each dispatch event, and let Pi's TUI handle the rendering.
+
+## Failure Modes
+
+Things that break in practice, in approximate order of frequency:
+
+### 1. The silent budget exhaustion
+
+A team runs fine for 12 turns, then the budget hits the hard cap. The lead receives: "Budget exhausted. Deliver your current best recommendation and flag what's unresolved." But the user doesn't see the budget block - only the lead does. The user gets an assessment that says "here's my recommendation, but the following items are unresolved" with no explanation of why.
+
+**Fix:** Watch the Budget row in the widget. When it flips to the warn band, start wrapping up manually. Or raise `maxLeadTurns` / `maxDelegations` / `maxCostUsd` in the team config before the session.
+
+### 2. The empty response from a delegate
+
+Occasionally a dispatched member returns zero tokens - the model API returned an empty assistant frame. My extension detects this and resets the delegate session. The lead receives an error: "Delegate returned no tokens. Retry once." Retrying usually works.
+
+**Fix:** Don't panic if you see this once per session. If it happens repeatedly, check your provider's status page.
+
+### 3. The conversation that never converges
+
+The lead dispatches the reviewer, who flags a concern. The lead dispatches the tester, who disagrees about the severity. The lead routes them to peer debate. They debate and return a joint recommendation. The lead synthesises, but the synthesis surfaces a new concern. The lead dispatches product to check user impact. And so on. This is the "one more opinion" loop.
+
+**Fix:** The convergence budget is designed for this. But you can also help it: in the user prompt, include a decision deadline - "I need a verdict by end of this session, even if some details are rough." The lead reads this and tightens its delegation threshold. Sometimes the fix is in the prompt, not the config.
+
+### 4. The over-briefed delegate
+
+You dispatch the reviewer with a 2,000-word message containing the entire spec, three prior analyses, and a list of 15 specific concerns. The delegate's context window fills before it starts. Its response is shallow - it can't hold the brief and reason about it simultaneously.
+
+**Fix:** Briefs should be one paragraph plus one artifact reference. "Review this spec for correctness and security. Focus on the auth flow in section 3 and the data export API in section 5." If the artifact is posted to the shared channel, just reference it - the delegate reads the channel and pulls what it needs.
+
+### 5. The model mismatch
+
+You override a member's model to save cost, but the cheaper model produces unusable output for that role. The lead receives a response that looks complete but is shallow. You don't notice until the final synthesis doesn't hold up.
+
+**Fix:** If a role's output is consumed by the user directly, or it makes assessments with cascading consequences, use a strong model regardless of cost. (See model-per-agent strategy above.)
+
+## What Multi-Agent Gets You That a Single Agent Can't
+
+A single agent with a strong system prompt can do anything a team can do - in theory. In practice, two things break:
+
+First, **genuine divergence of perspective.** A single agent asked to "review this design from multiple angles" produces variations on its own viewpoint. It can't model genuine disagreement because it has one set of weights, one training distribution. A multi-agent team with a reviewer, tester, and product person produces assessments that genuinely conflict - not because they're prompted to disagree, but because they have different role boundaries, different output formats, and different objectives. The divergence is structural, not rhetorical.
+
+I saw this clearly in a design review where the reviewer approved a data model, but the tester flagged a concurrency edge case that the reviewer's correctness framework hadn't considered. The single-agent version mentioned concurrency as a general concern but didn't identify the specific failure path. The tester's structural separation - different role, different output format, different objective - was what found it.
+
+Second, **specialist tools.** A single agent either has all tools or none. With my extension, each agent gets only the tools relevant to its role: the tester gets test-generation tools; the product person gets analytics and user-research tools; the reviewer works from the spec with nothing extra. This mirrors how real teams work: not everyone has access to every system. The tool surface per agent is the tool surface for its role, not the union of all roles.
+
+## Where It's Overkill
+
+I once built a planning team - a lead, an engineering estimator, and a data analyst for backlog metrics. Three members, sequential dispatch. It worked: the lead framed the goal, the estimator gauged capacity, the analyst pulled cycle-time data. The output was a plan with evidence.
+
+I used it for three planning turns / phases and stopped.
+
+The problem: planning is a recurring, well-structured task. The input (a list of candidates, recent velocity data) and output (a ranked backlog with capacity notes) are stable. A single agent with a skill - `planning/SKILL.md` loading the template and the data - produces the same output in one turn instead of three. It costs $0.15 instead of $0.60. It finishes in 15 seconds instead of 90.
+
+The team added value the first time, when I was figuring out the format. After that, the value was zero and the cost was real. I pulled the team YAML, wrote a skill, and never looked back.
+
+The rule: **if the workflow is recurring, well-structured, and the output format is stable, a skill beats a team.** Teams earn their cost when the problem is novel, the perspectives genuinely conflict, or the tool surface needs to differ per role. If none of those is true, you're paying for a conversation you don't need.
+
+## Next Steps
+
+- **Post 08: Pi Sessions & Resume** - picking up exactly where you left off, capturing learnings across sessions, and practical patterns for session organisation.
+- **Post 09: My Pi Setup** - the series closer (for now). I'll walk through the real teams, the real footer, and the real cost data - the setup behind the concepts in this post. No illustrative examples. The actual thing.
+- Try building your own team: pick a novel problem, define 3–5 roles with clear output boundaries, set the budget tight enough to force convergence, and watch the widget.
+- The `design-review` and `spec-check` team configs, all five agent personas, and the team extension code are in the [blog-lab repo](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-multi-agent-teams). Remember: the YAML schema is defined by the extension - it won't work without it.
