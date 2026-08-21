@@ -32,7 +32,10 @@ test('projects: card exposes source and live links', async ({ page }) => {
 test('projects: a project with a body has its own page', async ({ page }) => {
   await page.goto('/projects');
 
-  await page.getByRole('link', { name: /Read more/i }).first().click();
+  // Scoped to one card - several projects now carry a body, and "first" is
+  // whichever of them is newest
+  const card = page.locator('article', { hasText: /nunorralves\.pt/i }).first();
+  await card.getByRole('link', { name: /Read more/i }).click();
   await expect(page).toHaveURL(/\/projects\/nunorralves-pt$/);
 
   await expect(page.locator('h1', { hasText: /nunorralves\.pt/i })).toBeVisible({ timeout: 7000 });

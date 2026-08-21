@@ -1,0 +1,145 @@
+---
+title: "Health Scanner"
+date: "2026-08-19"
+tags: [javascript, pwa, open-food-facts, nutrition, health]
+published: true
+status: active
+description: "Scan a supermarket barcode with your phone and get a 0-100 health score that shows its working. Portuguese-first, built on Open Food Facts, and early enough that the methodology is still the product."
+image: "/images/projects/health-scanner/cover.png"
+---
+
+You are standing in a supermarket aisle holding two jars of chocolate spread. One of them
+is meaningfully worse than the other and nothing on the label tells you which. Health
+Scanner is a web app that answers that in about two seconds: point the phone at the
+barcode, get a number out of 100, and - this is the part I care about - see exactly how
+that number was arrived at.
+
+It is Portuguese-first, it runs in the browser as a PWA with no framework and no build
+step, and it is **three days old**. Everything below is real and working; none of it is
+open to the public yet, for a reason I will get to.
+
+## Where it is right now
+
+Three milestones are built and working end to end against live data:
+
+| Milestone | What it is | State |
+|---|---|---|
+| **M0** | The walking skeleton - camera scan, barcode lookup, raw fields on screen | built |
+| **M1** | Scoring: the composite, the refusals, the additive resolution, the PT-PT copy | built |
+| **M2** | Alternatives: *what should I buy instead?*, answered live | built |
+| **M3** | The mirror - a database underneath, so it can have more than one user | next |
+
+M3 is the reason there is no public link on this page. Open Food Facts allows 15 reads
+and 10 searches per minute per IP, and on a serverless host every user shares one IP -
+so that ceiling is the whole app's, not each person's. One person scanning a pantry is
+nowhere near it. Thirty people are. Putting a read-through mirror underneath is the gate
+on letting anyone else in, and it is what I am building now.
+
+![The score screen and the additive breakdown](/images/projects/health-scanner/score.png)
+
+## Why another food scanner
+
+Because the interesting problem is not the scanning, it is being willing to show your
+work. An app that tells you a named brand's product is bad has to be able to say why, in
+public, in a way that survives being challenged. So the methodology is a written document
+first and code second, and every rule in it has a reason attached.
+
+A few of the decisions that fell out of that:
+
+- **The score refuses to exist when it would be a guess.** No Nutri-Score grade means no
+  number at all - that grade is 65 % of the answer, and the rest would be arithmetic
+  wearing a lab coat. Refusing is more honest and more annoying, and I chose honest.
+- **A missing input is never a zero.** Treating "we don't know" as "it's fine" flatters
+  incomplete records precisely because they are incomplete.
+- **Additives are a deduction, not a component.** As a weighted component, a product with
+  no flagged additives earned a free 100 on it, which quietly propped up ultra-processed
+  food. Not containing a concerning additive is the normal case, and normal should not
+  score points.
+- **Only hard regulatory action is penalised.** Eleven additives, each because a regulator
+  acted - not because a study exists. Every citation was verified against current EU law,
+  and a script re-checks each one against Crossref: the DOI must resolve and its title
+  must name the E-number it is attached to.
+- **The letter is mapped, never the number.** Coca-Cola Zero's raw 12 is an E, because
+  beverages are graded on their own scale; mapping the number would systematically flatter
+  sugary drinks.
+
+Nutri-Score and NOVA are shown beside the composite, attributed, as the third-party
+classifications they are. The strongest claims on the screen are theirs. Mine is the
+labelled convenience on top.
+
+## The part that took the longest
+
+"Same category, better score" sounds like an afternoon's work and is not. Query the
+narrowest category and every alternative to a diet cola is another diet cola. Query the
+broadest and the app suggests water - true, useless, and slightly insulting.
+
+So it walks a category ladder narrow to broad, stops at the first rung with three products
+scoring materially better, and refuses rungs that name a department, a process or an
+ingredient rather than a kind of food. Every entry in that refusal list is a suggestion the
+app actually made before it was added: bread answered with penne, fiambre answered with
+tuna spread, sliced chicken answered with raw chicken.
+
+![Three alternatives and the side-by-side comparison](/images/projects/health-scanner/alternatives.png)
+
+The comparison is per 100 g, both columns from the same source, and the app says so. A
+partial score is not comparable, so it is not allowed to be a candidate - the first run put
+a Pepsi Zero above the Coca-Cola Zero that had just been scanned. The same drink, ranked
+higher for having *less* data behind it.
+
+## How it is built
+
+```
+public/     vanilla ES modules - render, scanner, ladder, alternatives
+            every user-facing string in one PT-PT module, by design
+api/        serverless functions: product lookup, category ranking
+  _lib/     score.js is the methodology as code. Pure: no I/O, no clock.
+data/       the Open Food Facts additives taxonomy, reduced and committed
+```
+
+No framework, no build step, no database. The premise that makes it small is that **we do
+not build a food database** - [Open Food Facts](https://world.openfoodfacts.org) is an
+open, ODbL-licensed catalogue of roughly four million products with a free API, and this
+is a scoring layer and a UI on top of it. Around a hundred tests under `node:test`, none
+of which touch the network, because a test that read live data would start failing on
+somebody else's edit.
+
+![The methodology, readable inside the app itself](/images/projects/health-scanner/methodology.png)
+
+## What comes after the mirror
+
+The roadmap past M3 is where I think the idea actually gets good:
+
+- **Personalisation profiles** - reweight salt, sugar, saturated fat and additive
+  tolerance per person. A flat score is actively unhelpful for Portuguese staples like
+  enchidos, bacalhau salgado and queijo curado, and every competitor gives everyone the
+  same number.
+- **Ingredient-label photo to structured data**, as the fallback for products the database
+  does not know.
+- **Allergen alerts** against a profile.
+- **Non-food categories** - cosmetics and household products, where the honest answer may
+  not be a number at all. There is no Nutri-Score for shampoo, and a score implying
+  precision the evidence cannot carry would be worse than a careful per-ingredient scale.
+
+## If any of this is your problem too
+
+This is the stage where an outside opinion is worth more than another week of my own, so
+genuinely: get in touch.
+
+I would like to hear from you if you shop in Portugal and want to try it on your own
+kitchen - coverage of PT own-brand products is the number that decides how the roadmap
+bends. If you work in nutrition or food policy and think a rule in the methodology is
+wrong, tell me which one and why; it is written to be argued with. If you are at a
+retailer, a health service or an insurer and this looks adjacent to something you are
+trying to do, that is a conversation I am open to. And if you just want to help build
+it, there is plenty of it left.
+
+[Email me](mailto:nunorralves@gmail.com?subject=Health%20Scanner) or find me on
+[LinkedIn](https://www.linkedin.com/in/nralves/). Screenshots on this page are the real
+app, taken against live data.
+
+---
+
+Data from [Open Food Facts](https://world.openfoodfacts.org) under
+[ODbL](https://opendatacommons.org/licenses/odbl/). Nutri-Score is a registered trademark
+of Santé publique France; the app renders its own letter-and-colour treatment rather than
+the official logo. Informational, not medical advice.
