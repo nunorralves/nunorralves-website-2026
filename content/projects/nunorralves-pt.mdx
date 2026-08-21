@@ -1,0 +1,41 @@
+---
+title: "nunorralves.pt"
+date: "2026-01-31"
+tags: [nextjs, typescript, reactjs, mdx, tailwind]
+published: true
+status: active
+description: "This website. A Next.js 16 blog with MDX posts, full-text search, tag pages, dark/light themes, and Playwright end-to-end tests running in CI."
+image: "/images/projects/nunorralves-pt/cover.png"
+repo: "https://github.com/nunorralves/nunorralves-website-2026"
+demo: "https://nunorralves.pt"
+---
+
+## Why rebuild it
+
+The previous version of this site had accumulated years of drift - dependencies I no longer understood, a layout I kept working around rather than fixing. Rather than untangle it, I started clean with the constraints I actually wanted: content as files, no database, no CMS, and a build that fully prerenders.
+
+## How it works
+
+Posts live as MDX files under `content/posts`. Frontmatter carries the title, date, tags and description; the body is rendered with `next-mdx-remote` and syntax-highlighted at build time by `rehype-pretty-code`.
+
+```
+content/
+  posts/*.mdx        # blog posts
+  projects/*.mdx     # this page's siblings
+app/
+  posts/[slug]/      # post template
+  projects/[slug]/   # project template
+lib/
+  helpers.ts         # frontmatter reading, tag normalization
+  search.ts          # Fuse index over posts and projects
+```
+
+Theming is two sets of CSS custom properties - a dark default and a `.light` override toggled on the root element and persisted to `localStorage`. Every component reads the tokens rather than hardcoding colours, so adding a third theme would mean adding one more block.
+
+Search runs entirely client-side with Fuse.js over a prebuilt list of posts and projects. It is not the most scalable approach - the full text of every post ships to the browser - but at this volume it is instant and needs no backend.
+
+## What I would do differently
+
+- Move search to a prebuilt index rather than shipping every post's content to the client.
+- Generate Open Graph images at build time instead of relying on the default card.
+- Decide on the tag vocabulary earlier. Tags drifted in case across posts and needed a normalization pass to merge them back together.

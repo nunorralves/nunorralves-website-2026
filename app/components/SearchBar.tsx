@@ -1,14 +1,15 @@
 "use client";
 
-import { searchPosts } from "lib/search";
-import { Post } from "lib/types";
+import { searchItems } from "lib/search";
+import { SearchableItem } from "lib/types";
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PostCard } from "./PostCard";
+import { ProjectCard } from "./ProjectCard";
 
-export default function SearchBar({ posts }: { posts: Post[] }) {
+export default function SearchBar({ items }: { items: SearchableItem[] }) {
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Post[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchableItem[]>([]);
 
   const debounceRef = useRef<number | null>(null);
 
@@ -23,7 +24,7 @@ export default function SearchBar({ posts }: { posts: Post[] }) {
     }
 
     debounceRef.current = window.setTimeout(() => {
-      const results = searchPosts(posts, query);
+      const results = searchItems(items, query);
       setSearchResults(results.map((result) => result.item));
     }, 300);
 
@@ -32,7 +33,7 @@ export default function SearchBar({ posts }: { posts: Post[] }) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [query, posts]);
+  }, [query, items]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -47,22 +48,40 @@ export default function SearchBar({ posts }: { posts: Post[] }) {
         <input
           type='text'
           className='block w-full pl-10 pr-3 py-3 border border-border rounded-lg leading-5 bg-background placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors'
-          placeholder='Search posts...'
+          placeholder='Search posts and projects...'
           value={query}
           onChange={handleChange}
         />
       </div>
 
       {searchResults.length > 0 ? (
-        <div className='space-y-8 mt-4'>
+        <div className='space-y-6 mt-4'>
           <p className='text-muted-foreground'>
             Found {searchResults.length} result
             {searchResults.length !== 1 ? "s" : ""}
           </p>
 
-          {searchResults.map((post) => (
-            <PostCard key={post.slug} {...post.metadata} slug={post.slug} />
-          ))}
+          {searchResults.map((result) =>
+            result.kind === "project" ? (
+              <div key={`project-${result.slug}`}>
+                <span className='inline-block mb-2 text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-link)] text-[var(--color-link)]'>
+                  Project
+                </span>
+                <ProjectCard
+                  {...result.metadata}
+                  slug={result.slug}
+                  hasBody={result.hasBody}
+                />
+              </div>
+            ) : (
+              <div key={`post-${result.slug}`}>
+                <span className='inline-block mb-2 text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-secondary)]'>
+                  Post
+                </span>
+                <PostCard {...result.metadata} slug={result.slug} />
+              </div>
+            ),
+          )}
         </div>
       ) : query.trim() !== "" ? (
         <div className='text-center py-12 text-muted-foreground'>

@@ -44,3 +44,6 @@ next-env.d.ts
 
 STEPS.MD
 /plan
+
+# claude code
+/.claude/

@@ -1,8 +1,8 @@
 import Fuse from "fuse.js";
-import type { Post } from "./types";
+import type { SearchableItem } from "./types";
 
 export interface SearchResult {
-  item: Post;
+  item: SearchableItem;
   score: number;
 }
 
@@ -19,11 +19,8 @@ const fuseOptions = {
   // At what point does the match algorithm give up.
   // A threshold of 0.0 requires a perfect match (of both letters and location), a threshold of 1.0 would match anything.
   threshold: 0.3,
-  // threshold: 1.0,
   // Determines approximately where in the text is the pattern expected to be found.
   location: 0,
-  // Determines how close the match must be to the fuzzy location (specified by location).
-  // distance: 100,
   ignoreLocation: true,
   // Only the matches whose length exceeds this value will be returned.
   // (For instance, if you want to ignore single character matches in the result, set it to 2).
@@ -35,29 +32,16 @@ const fuseOptions = {
     { name: "metadata.description", weight: 0.5 },
     { name: "metadata.tags", weight: 0.3 },
     { name: "content", weight: 0.2 },
-    // { name: "title", path: ["metadata", "title"], weight: 0.8 },
-    // { name: "description", path: ["metadata", "description"], weight: 0.5 },
-    // { name: "tags", path: ["metadata", "tags"], weight: 0.3 },
-    // { name: "content", weight: 1.0 },
   ],
 };
 
-export function searchPosts(posts: Post[], query: string): SearchResult[] {
-  const fuse = new Fuse(posts, fuseOptions);
+// Searches posts and projects from the same index - each result carries the
+// `kind` discriminator so the UI can render the right card.
+export function searchItems(
+  items: SearchableItem[],
+  query: string,
+): SearchResult[] {
+  const fuse = new Fuse(items, fuseOptions);
   const results = fuse.search(query);
   return results as SearchResult[];
 }
-
-// export function searchPosts(posts: Post[], query: string): SearchResult[] {
-//   const fuse = new Fuse(posts, {
-//     keys: ["content"],
-//     threshold: 1.0,
-//     ignoreLocation: true,
-//   });
-
-//   const results = fuse.search(query);
-//   console.log("»»» results:", results);
-//   console.log("total posts:", posts.length);
-//   console.log("first post content:", posts[0]?.content);
-//   return results as SearchResult[];
-// }

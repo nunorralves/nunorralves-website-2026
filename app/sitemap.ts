@@ -1,12 +1,19 @@
-import { getAllPostsMetadataWithSlug } from "lib/helpers";
+import {
+  getAllPostsMetadataWithSlug,
+  getAllProjectsMetadataWithSlug,
+} from "lib/helpers";
 
 export default async function sitemap() {
   const baseUrl = "https://nunorralves.pt";
-  const posts = await getAllPostsMetadataWithSlug();
+  const [posts, projects] = await Promise.all([
+    getAllPostsMetadataWithSlug(),
+    getAllProjectsMetadataWithSlug(),
+  ]);
 
   const pages = [
     { url: `${baseUrl}/`, lastModified: new Date().toISOString() },
     { url: `${baseUrl}/archive`, lastModified: new Date().toISOString() },
+    { url: `${baseUrl}/projects`, lastModified: new Date().toISOString() },
     { url: `${baseUrl}/search`, lastModified: new Date().toISOString() },
     { url: `${baseUrl}/tags`, lastModified: new Date().toISOString() },
   ];
@@ -16,5 +23,13 @@ export default async function sitemap() {
     lastModified: new Date(post.date).toISOString(),
   }));
 
-  return [...pages, ...postPages];
+  // Only projects with a body have a page of their own
+  const projectPages = projects
+    .filter((project) => project.hasBody)
+    .map((project) => ({
+      url: `${baseUrl}/projects/${project.slug}`,
+      lastModified: new Date(project.date).toISOString(),
+    }));
+
+  return [...pages, ...postPages, ...projectPages];
 }

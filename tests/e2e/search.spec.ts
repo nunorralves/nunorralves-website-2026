@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('search: finds results for query', async ({ page }) => {
   await page.goto('/search');
 
-  const input = page.locator('input[placeholder="Search posts..."]');
+  const input = page.locator('input[placeholder="Search posts and projects..."]');
   await expect(input).toBeVisible({ timeout: 7000 });
   await input.fill('Terminal');
 

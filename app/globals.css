@@ -165,6 +165,54 @@ article a:hover,
   color: var(--color-link-hover);
 }
 
+/* Project cards and spec panels manage their own link styling.
+   `article a` below is unlayered, so it outranks both @layer components
+   (.tag) and Tailwind's @layer utilities - these rules have to win on
+   specificity rather than on utility classes. */
+.projectcard a,
+.project-meta a,
+.project-back {
+  text-decoration: none;
+}
+
+/* Project title */
+.projectcard h2 a {
+  color: var(--color-foreground);
+}
+.projectcard h2 a:hover {
+  color: var(--color-link);
+}
+
+/* Source / Live / Read more, and the spec panel's repo and demo links */
+.projectcard a.plink,
+.project-meta a.plink {
+  color: var(--color-link);
+}
+.projectcard a.plink:hover,
+.project-meta a.plink:hover {
+  color: var(--color-link-hover);
+}
+
+/* Tag pills sit on a card, where --color-tag is identical to --color-card in
+   the dark theme - step up to --color-tertiary so the pill stays visible */
+.projectcard a.tag,
+.project-meta a.tag {
+  color: var(--color-primary);
+  background-color: var(--color-tertiary);
+}
+.projectcard a.tag:hover,
+.project-meta a.tag:hover {
+  color: var(--color-primary);
+  opacity: 0.8;
+}
+
+.project-back {
+  color: var(--color-secondary);
+}
+.project-back:hover {
+  color: var(--color-link);
+}
+
 /* External links indicator (optional) */
 /* article a[href^="http"]::after,
 .prose a[href^="http"]::after {

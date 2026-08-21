@@ -21,6 +21,9 @@ export default function Header() {
           <Link href='/search' className='text-foreground'>
             Search
           </Link>
+          <Link href='/projects' className='text-foreground'>
+            Projects
+          </Link>
           <Link href='/tags' className='text-foreground'>
             Tags
           </Link>
