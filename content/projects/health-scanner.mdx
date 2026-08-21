@@ -15,25 +15,36 @@ barcode, get a number out of 100, and - this is the part I care about - see exac
 that number was arrived at.
 
 It is Portuguese-first, it runs in the browser as a PWA with no framework and no build
-step, and it is **three days old**. Everything below is real and working; none of it is
-open to the public yet, for a reason I will get to.
+step, and it is new enough to still be counted in days: the first commit is dated
+19 August 2026. Everything below is real and working; none of it is open to the public
+yet, for a reason I will get to.
 
 ## Where it is right now
 
-Three milestones are built and working end to end against live data:
+Three of the five milestones are built and working end to end against live data:
 
 | Milestone | What it is | State |
 |---|---|---|
 | **M0** | The walking skeleton - camera scan, barcode lookup, raw fields on screen | built |
 | **M1** | Scoring: the composite, the refusals, the additive resolution, the PT-PT copy | built |
 | **M2** | Alternatives: *what should I buy instead?*, answered live | built |
-| **M3** | The mirror - a database underneath, so it can have more than one user | next |
+| **M2.5** | The scan record - make every lookup durable, so coverage becomes a number | next |
+| **M3** | The mirror - a database underneath, so it can have more than one user | after |
 
 M3 is the reason there is no public link on this page. Open Food Facts allows 15 reads
 and 10 searches per minute per IP, and on a serverless host every user shares one IP -
 so that ceiling is the whole app's, not each person's. One person scanning a pantry is
-nowhere near it. Thirty people are. Putting a read-through mirror underneath is the gate
-on letting anyone else in, and it is what I am building now.
+nowhere near it. Thirty people are. A read-through mirror is the gate on letting anyone
+else in.
+
+What I am actually building next, though, is smaller and more interesting. The premise
+this whole project rests on is that **I do not need to build a food database**, because an
+open one already exists. That premise is currently an assumption. M2.5 makes every lookup
+durable - found, found-but-too-thin, and not-found alike - so that walking a real
+Portuguese supermarket produces an answer with a number attached instead of an impression.
+If it turns out Open Food Facts does not know the own-brand products people here actually
+buy, then this is partly a data-contribution app and the plan changes shape. I would
+rather find that out from a shop than from a spreadsheet.
 
 ![The score screen and the additive breakdown](/images/projects/health-scanner/score.png)
 
@@ -105,9 +116,9 @@ somebody else's edit.
 
 ![The methodology, readable inside the app itself](/images/projects/health-scanner/methodology.png)
 
-## What comes after the mirror
+## What comes after that
 
-The roadmap past M3 is where I think the idea actually gets good:
+The roadmap past the mirror is where I think the idea actually gets good:
 
 - **Personalisation profiles** - reweight salt, sugar, saturated fat and additive
   tolerance per person. A flat score is actively unhelpful for Portuguese staples like
@@ -120,18 +131,13 @@ The roadmap past M3 is where I think the idea actually gets good:
   not be a number at all. There is no Nutri-Score for shampoo, and a score implying
   precision the evidence cannot carry would be worse than a careful per-ingredient scale.
 
-## If any of this is your problem too
+## Notes and corrections welcome
 
-This is the stage where an outside opinion is worth more than another week of my own, so
-genuinely: get in touch.
-
-I would like to hear from you if you shop in Portugal and want to try it on your own
-kitchen - coverage of PT own-brand products is the number that decides how the roadmap
-bends. If you work in nutrition or food policy and think a rule in the methodology is
-wrong, tell me which one and why; it is written to be argued with. If you are at a
-retailer, a health service or an insurer and this looks adjacent to something you are
-trying to do, that is a conversation I am open to. And if you just want to help build
-it, there is plenty of it left.
+This is not a product and I am not selling anything. It is a working prototype and a
+written argument, and the argument is the part I would like challenged - particularly by
+anyone who works in nutrition or food policy and thinks one of the rules above is wrong.
+Tell me which one and why; the methodology is written to be argued with, and being wrong
+in private is not better than being corrected in public.
 
 [Email me](mailto:nunorralves@gmail.com?subject=Health%20Scanner) or find me on
 [LinkedIn](https://www.linkedin.com/in/nralves/). Screenshots on this page are the real
