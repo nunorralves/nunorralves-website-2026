@@ -21,11 +21,11 @@ export default async function Home() {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
         <p className='mb-4 text-lg'>
-          Engineering Director at Entrust. Platform and infrastructure, and the
+          Senior Engineering Director at Entrust (former Onfido). Platform, solutions and the
           teams that run them.
         </p>
         <p className='mb-6 font-normal'>
-          I help engineering teams build platform and infrastructure that keep
+          I help engineering teams build scalable platforms that keep
           services reliable and developers productive. I enjoy building useful
           systems, collaborating with thoughtful people, and untangling problems
           that looked much simpler on the whiteboard. Across embedded systems,
