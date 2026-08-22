@@ -127,11 +127,17 @@ export default async function Home() {
         {featured.length > 0 && (
           <section className='mb-12'>
             <h2 className='text-xl font-semibold mb-4'>Selected work</h2>
-            <div className='grid gap-6 sm:grid-cols-3'>
+            <div className='grid gap-6 sm:grid-cols-3 mb-6'>
               {featured.map((item) => (
                 <FeaturedCard key={`${item.kind}-${item.slug}`} {...item} />
               ))}
             </div>
+            <Link
+              href='/projects'
+              className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+            >
+              All projects
+            </Link>
           </section>
         )}
 

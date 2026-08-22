@@ -16,9 +16,6 @@ export default function Header() {
           <Link href='/' className='font-medium text-foreground'>
             Home
           </Link>
-          <Link href='/about' className='text-foreground'>
-            About
-          </Link>
           <Link href='/blog' className='text-foreground'>
             Writing
           </Link>
