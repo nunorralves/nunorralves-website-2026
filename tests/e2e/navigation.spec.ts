@@ -5,7 +5,7 @@ test('navigation: open a post from the homepage', async ({ page }) => {
   // wait for main content to load
   await page.waitForSelector('main, h1, h2', { timeout: 7000 });
 
-  // Click the newest post by title (always on page 1)
+  // Click the newest post by title - the landing page always surfaces it
   const link = page.locator('text=Multi-Agent').first();
   await expect(link).toBeVisible({ timeout: 7000 });
   await link.click();

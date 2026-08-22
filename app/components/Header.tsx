@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
@@ -15,17 +16,17 @@ export default function Header() {
           <Link href='/' className='font-medium text-foreground'>
             Home
           </Link>
-          <Link href='/archive' className='text-foreground'>
-            Archive
+          <Link href='/about' className='text-foreground'>
+            About
           </Link>
-          <Link href='/search' className='text-foreground'>
-            Search
+          <Link href='/blog' className='text-foreground'>
+            Writing
           </Link>
           <Link href='/projects' className='text-foreground'>
             Projects
           </Link>
-          <Link href='/tags' className='text-foreground'>
-            Tags
+          <Link href='/search' aria-label='Search' className='text-foreground'>
+            <Search className='w-5 h-5' />
           </Link>
           <ThemeToggle />
         </ul>

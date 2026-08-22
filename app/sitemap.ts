@@ -12,10 +12,9 @@ export default async function sitemap() {
 
   const pages = [
     { url: `${baseUrl}/`, lastModified: new Date().toISOString() },
-    { url: `${baseUrl}/archive`, lastModified: new Date().toISOString() },
+    { url: `${baseUrl}/blog`, lastModified: new Date().toISOString() },
     { url: `${baseUrl}/projects`, lastModified: new Date().toISOString() },
     { url: `${baseUrl}/search`, lastModified: new Date().toISOString() },
-    { url: `${baseUrl}/tags`, lastModified: new Date().toISOString() },
   ];
 
   const postPages = posts.map((post) => ({
