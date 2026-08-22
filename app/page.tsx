@@ -1,31 +1,29 @@
 import { PostCard } from "./components/PostCard";
-import { getAllPostsMetadataWithSlug } from "../lib/helpers";
-import { PostMetadataWithSlug } from "lib/types";
-import { Pagination } from "./components/Pagination";
+import { FeaturedCard } from "./components/FeaturedCard";
+import Link from "next/link";
+import {
+  getAllPostsMetadataWithSlug,
+  getFeaturedItems,
+} from "../lib/helpers";
 
-const POSTS_PER_PAGE = 5;
+const RECENT_POSTS = 3;
 
-interface HomePageProps {
-  searchParams: {
-    page?: string;
-  };
-}
+export default async function Home() {
+  const [featured, posts] = await Promise.all([
+    getFeaturedItems(3),
+    getAllPostsMetadataWithSlug(),
+  ]);
 
-export default async function Home({ searchParams }: HomePageProps) {
-  const { page } = await searchParams;
-  const currentPage = parseInt(page || "1");
-  const postsMetadataWithSlug: PostMetadataWithSlug[] =
-    await getAllPostsMetadataWithSlug();
-
-  const totalPages = Math.ceil(postsMetadataWithSlug.length / POSTS_PER_PAGE);
-  const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-  const endIndex = startIndex + POSTS_PER_PAGE;
-  const paginatedPosts = postsMetadataWithSlug.slice(startIndex, endIndex);
+  const recentPosts = posts.slice(0, RECENT_POSTS);
 
   return (
     <div className='mx-auto w-2/3 py-8'>
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
+        <p className='mb-4 text-lg'>
+          Engineering Director at Entrust. Platform and infrastructure, and the
+          teams that run them.
+        </p>
         <p className='mb-6 font-normal'>
           I help engineering teams build platform and infrastructure that keep
           services reliable and developers productive. I enjoy building useful
@@ -126,23 +124,30 @@ export default async function Home({ searchParams }: HomePageProps) {
           </a>
         </div>
 
-        {paginatedPosts.length > 0 ? (
-          <>
-            {paginatedPosts.map((postMetadataWithSlug) => (
-              <PostCard
-                key={postMetadataWithSlug.slug}
-                {...postMetadataWithSlug}
-              />
-            ))}
+        {featured.length > 0 && (
+          <section className='mb-12'>
+            <h2 className='text-xl font-semibold mb-4'>Selected work</h2>
+            <div className='grid gap-6 sm:grid-cols-3'>
+              {featured.map((item) => (
+                <FeaturedCard key={`${item.kind}-${item.slug}`} {...item} />
+              ))}
+            </div>
+          </section>
+        )}
 
-            {totalPages > 1 && (
-              <Pagination currentPage={currentPage} totalPages={totalPages} />
-            )}
-          </>
-        ) : (
-          <div className='text-center py-12 text-muted-foreground'>
-            <p className='text-lg'>No posts found.</p>
-          </div>
+        {recentPosts.length > 0 && (
+          <section>
+            <h2 className='text-xl font-semibold mb-4'>Recent writing</h2>
+            {recentPosts.map((post) => (
+              <PostCard key={post.slug} {...post} />
+            ))}
+            <Link
+              href='/blog'
+              className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+            >
+              All posts
+            </Link>
+          </section>
         )}
       </div>
     </div>

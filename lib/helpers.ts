@@ -10,7 +10,9 @@ import {
   ProjectMetadataWithSlug,
   SearchableItem,
   TagCount,
+  FeaturedItem,
 } from "./types";
+import { getProjectDetailHref } from "./links";
 
 // Resolve a content directory robustly: prefer process.cwd(), fallback to relative path from this file.
 function resolveContentDirectory(name: string): string {
@@ -270,6 +272,49 @@ export async function getAllProjectsMetadataWithSlug(): Promise<
 export async function getProjectsWithBody(): Promise<Project[]> {
   const projects = await getAllProjects();
   return projects.filter((p) => p.content.trim().length > 0);
+}
+
+/* ============================== FEATURED ============================== */
+
+// Posts and projects carrying `featured: true` in frontmatter, newest first.
+// With nothing flagged this falls back to the most recent of either kind, so
+// the home page strip is never empty and never needs a slug hardcoded into it.
+export async function getFeaturedItems(limit = 3): Promise<FeaturedItem[]> {
+  const [posts, projects] = await Promise.all([
+    getAllPostsMetadataWithSlug(),
+    getAllProjectsMetadataWithSlug(),
+  ]);
+
+  const items: FeaturedItem[] = [
+    ...posts.map((post) => ({
+      kind: "post" as const,
+      slug: post.slug,
+      title: post.title,
+      description: post.description,
+      date: post.date,
+      featured: post.featured === true,
+      href: `/posts/${post.slug}`,
+    })),
+    ...projects.map((project) => ({
+      kind: "project" as const,
+      slug: project.slug,
+      title: project.title,
+      description: project.description,
+      date: project.date,
+      featured: project.featured === true,
+      // A project with neither a write-up nor a body still has the listing
+      href: getProjectDetailHref(project) ?? "/projects",
+    })),
+  ];
+
+  const flagged = items.filter((item) => item.featured);
+  const pool = flagged.length > 0 ? flagged : items;
+
+  // Compare on timestamps: post frontmatter carries a mix of quoted strings
+  // and bare YAML dates, so `<` would compare a Date against a string here.
+  return pool
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, limit);
 }
 
 /* =============================== TAGS =============================== */

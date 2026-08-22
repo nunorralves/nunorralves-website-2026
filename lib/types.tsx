@@ -4,6 +4,8 @@ export interface PostMetadata {
   tags: string[];
   published: boolean;
   description?: string;
+  // Opt this post into the home page's "Selected work" strip
+  featured?: boolean;
 }
 
 export interface PostMetadataWithSlug extends PostMetadata {
@@ -34,6 +36,8 @@ export interface ProjectMetadata {
   status?: ProjectStatus;
   // Slug of an existing blog post that serves as this project's write-up
   post?: string;
+  // Opt this project into the home page's "Selected work" strip
+  featured?: boolean;
 }
 
 export interface ProjectMetadataWithSlug extends ProjectMetadata {
@@ -46,6 +50,18 @@ export interface Project {
   slug: string;
   metadata: ProjectMetadata;
   content: string;
+}
+
+// A post or a project reduced to what the home page strip needs to render it
+export interface FeaturedItem {
+  kind: "post" | "project";
+  slug: string;
+  title: string;
+  description?: string;
+  date: Date;
+  // False for items that only made the strip through the most-recent fallback
+  featured: boolean;
+  href: string;
 }
 
 // One tag and how many posts plus projects carry it, after normalization

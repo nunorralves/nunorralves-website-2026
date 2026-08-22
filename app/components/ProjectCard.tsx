@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ExternalLink, Github } from "lucide-react";
 import { ProjectMetadataWithSlug, ProjectStatus } from "lib/types";
+import { getProjectDetailHref } from "lib/links";
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",
@@ -17,18 +18,8 @@ const STATUS_COLORS: Record<ProjectStatus, string> = {
   "on-hold": "var(--color-secondary)",
 };
 
-// Where the project title points, in priority order:
-//   1. an existing blog post that serves as the write-up
-//   2. its own generated page, when the .mdx has a body
-//   3. nowhere - the card already says everything
-function getDetailHref(project: ProjectMetadataWithSlug): string | null {
-  if (project.post) return `/posts/${project.post}`;
-  if (project.hasBody) return `/projects/${project.slug}`;
-  return null;
-}
-
 export function ProjectCard(project: ProjectMetadataWithSlug) {
-  const detailHref = getDetailHref(project);
+  const detailHref = getProjectDetailHref(project);
   const detailLabel = project.post ? "Write-up" : "Read more";
 
   return (
