@@ -22,15 +22,16 @@ yet, for a reason I will get to.
 
 ## Where it is right now
 
-Three of the five milestones are built and working end to end against live data:
+Five of the six milestones are built and working end to end against live data:
 
 | Milestone | What it is | State |
 |---|---|---|
 | **M0** | The walking skeleton - camera scan, barcode lookup, raw fields on screen | built |
 | **M1** | Scoring: the composite, the refusals, the additive resolution, the PT-PT copy | built |
 | **M2** | Alternatives: *what should I buy instead?*, answered live | built |
-| **M2.5** | The scan record - make every lookup durable, so coverage becomes a number | next |
-| **M3** | The mirror - a database underneath, so it can have more than one user | after |
+| **M2.5** | The scan record - every lookup written down, so coverage becomes a number | built |
+| **M2.6** | The verdict - a thumb on each suggestion, and a desk to review them from | built |
+| **M3** | The mirror - a database underneath, so it can have more than one user | next |
 
 M3 is the reason there is no public link on this page. Open Food Facts allows 15 reads
 and 10 searches per minute per IP, and on a serverless host every user shares one IP -
@@ -38,14 +39,14 @@ so that ceiling is the whole app's, not each person's. One person scanning a pan
 nowhere near it. Thirty people are. A read-through mirror is the gate on letting anyone
 else in.
 
-What I am actually building next, though, is smaller and more interesting. The premise
-this whole project rests on is that **I do not need to build a food database**, because an
-open one already exists. That premise is currently an assumption. M2.5 makes every lookup
-durable - found, found-but-too-thin, and not-found alike - so that walking a real
-Portuguese supermarket produces an answer with a number attached instead of an impression.
-If it turns out Open Food Facts does not know the own-brand products people here actually
-buy, then this is partly a data-contribution app and the plan changes shape. I would
-rather find that out from a shop than from a spreadsheet.
+What is missing now is not code. The premise this whole project rests on is that **I do
+not need to build a food database**, because an open one already exists - and that premise
+is still an assumption. The instrument that tests it is finished: every lookup is written
+down, found, found-but-too-thin and not-found alike, and one read-only script turns a shop
+into a table. The shop has not happened yet. When it does, either Open Food Facts knows the
+own-brand products people here actually buy, or this is partly a data-contribution app and
+the plan changes shape. I would rather find that out from a supermarket than from a
+spreadsheet.
 
 ![The score screen and the additive breakdown](/images/projects/health-scanner/score.png)
 
@@ -98,22 +99,85 @@ partial score is not comparable, so it is not allowed to be a candidate - the fi
 a Pepsi Zero above the Coca-Cola Zero that had just been scanned. The same drink, ranked
 higher for having *less* data behind it.
 
+## Whether the suggestions are any good
+
+The log can tell me a great deal about a suggestion: which rung of the ladder it came from,
+how many candidates the search returned, what each of them scored, how long the walk took.
+None of that says whether a human would have put the thing in a trolley. Counting the
+*structure* of a suggestion and calling it quality is how you end up with confident numbers
+measuring nothing, so the app now collects the judgement separately, from both ends of the
+same day.
+
+In the aisle: a thumb up and a thumb down on each suggestion, at the foot of the comparison
+you already opened. No count, no aggregate, no thanks-for-your-feedback, and no effect on
+the order of the cards - the moment it looks like a rating widget it starts collecting the
+answer people give widgets.
+
+![The comparison, and the two glyphs at the foot of it](/images/projects/health-scanner/verdict.png)
+
+At the desk afterwards: the same judgement, from a small backoffice over the log, because
+half the bad suggestions are only recognisable beside the twenty others the ladder made
+that day. Both write to the same record, tagged with which of the two they came from, and
+**they are allowed to disagree** - a thumb given while holding the packet and a thumb given
+while reading a table are different acts, and when they contradict each other that is the
+most interesting row on the page rather than a conflict to resolve.
+
+![The backoffice: the coverage numbers, the rows behind them, and one scan opened up](/images/projects/health-scanner/backoffice.png)
+
+That screenshot is eight lookups from a kitchen table, not the shop run - which is exactly
+why the numbers in it are small and why the run is the next thing that happens.
+
+Four rules hold that together, and each of them is one I would have got wrong by default:
+
+- **Silence is not a thumb down.** Most suggestions will never be rated. So verdict
+  coverage is reported as its own number - the *27.8 %* in the screenshot above is the
+  share of suggestions anybody judged at all - and up and down are only ever counted
+  against those, never against the ones nobody looked at.
+- **A thumb with nowhere to go is worse than no thumb.** The buttons do not render until
+  the row they would be written to exists. Otherwise somebody in a supermarket presses one,
+  watches it move, and believes they have answered.
+- **Pressing the same thumb again withdraws it.** Unrated has to stay reachable, or a
+  mis-tap silently becomes a judgement nobody made.
+- **The backoffice is local-only, and that is the entire security model.** It reads the
+  whole log, so an unprotected admin route on the public deploy would publish every barcode
+  and store to whoever guessed the URL - and a shared secret in an environment variable is
+  not worth trusting when the page has no reason to be reachable from a supermarket at all.
+  It binds to localhost, it is excluded from the deploy, and it refuses to start inside one.
+  It browses through a database role that can only `SELECT`.
+
+Deleting is soft by default: a row is marked excluded with a reason, every analysis query
+filters it out, and the report says how many went. A hard `DELETE` makes a figure I already
+published permanently unreproducible, and there is no amount of disk space worth that.
+
+The first version of the per-rung table divided verdicts given by suggestions judged, which
+meant one product thumbed in the aisle and again at the desk could push a category past
+100 %. It was caught by probing the queries against the database before a single real
+verdict existed, which is roughly the point of building the instrument before the shop.
+
 ## How it is built
 
 ```
 public/     vanilla ES modules - render, scanner, ladder, alternatives
             every user-facing string in one PT-PT module, by design
-api/        serverless functions: product lookup, category ranking
+api/        serverless functions: product lookup, category ranking, and three
+            writes - the scan, what the ladder did, and the verdict
   _lib/     score.js is the methodology as code. Pure: no I/O, no clock.
 data/       the Open Food Facts additives taxonomy, reduced and committed
+scripts/    the coverage report. Read-only: every statement is a select.
+backoffice/ never deployed. The log, on one laptop, over a read-only role.
 ```
 
-No framework, no build step, no database. The premise that makes it small is that **we do
-not build a food database** - [Open Food Facts](https://world.openfoodfacts.org) is an
-open, ODbL-licensed catalogue of roughly four million products with a free API, and this
-is a scoring layer and a UI on top of it. Around a hundred tests under `node:test`, none
-of which touch the network, because a test that read live data would start failing on
-somebody else's edit.
+No framework and no build step. There is now a database, and it is not the one you would
+expect: Postgres holds the log of what was scanned and what was suggested, while the
+lookups themselves still go straight to Open Food Facts on every request. The premise that
+makes the whole thing small is that **we do not build a food
+database** - [Open Food Facts](https://world.openfoodfacts.org) is an open, ODbL-licensed
+catalogue of roughly four million products with a free API, and this is a scoring layer and
+a UI on top of it. The mirror that would put a copy of it underneath is M3, and it is
+infrastructure rather than product: it adds no feature at all.
+
+152 tests under `node:test`, none of which touch the network, because a test that read live
+data would start failing on somebody else's edit.
 
 ![The methodology, readable inside the app itself](/images/projects/health-scanner/methodology.png)
 
