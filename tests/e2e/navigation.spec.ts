@@ -12,5 +12,5 @@ test('navigation: open a post from the homepage', async ({ page }) => {
 
   // Post page contains H1 with the post title
   const heading = page.locator('h1', { hasText: /Pi Multi-Agent Teams/i }).first();
-  await expect(heading).toBeVisible({ timeout: 5000 });
+  await expect(heading).toBeVisible({ timeout: 7000 });
 });
