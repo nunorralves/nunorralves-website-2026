@@ -9,6 +9,7 @@ import {
   ProjectMetadata,
   ProjectMetadataWithSlug,
   SearchableItem,
+  TagCount,
 } from "./types";
 
 // Resolve a content directory robustly: prefer process.cwd(), fallback to relative path from this file.
@@ -269,6 +270,32 @@ export async function getAllProjectsMetadataWithSlug(): Promise<
 export async function getProjectsWithBody(): Promise<Project[]> {
   const projects = await getAllProjects();
   return projects.filter((p) => p.content.trim().length > 0);
+}
+
+/* =============================== TAGS =============================== */
+
+// Counts are computed from the normalized tags, so "Typescript" and
+// "typescript" land on the same entry rather than splitting the count.
+export async function getTagCounts(): Promise<TagCount[]> {
+  const [posts, projects] = await Promise.all([
+    getAllPostsMetadataWithSlug(),
+    getAllProjectsMetadataWithSlug(),
+  ]);
+
+  const counts = [...posts, ...projects].reduce<Record<string, number>>(
+    (acc, item) => {
+      if (!item.tags) return acc;
+      item.tags.forEach((tag) => {
+        acc[tag] = (acc[tag] || 0) + 1;
+      });
+      return acc;
+    },
+    {},
+  );
+
+  return Object.entries(counts)
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
 
 /* ============================== SEARCH ============================== */

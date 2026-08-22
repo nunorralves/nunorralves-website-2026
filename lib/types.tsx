@@ -48,6 +48,12 @@ export interface Project {
   content: string;
 }
 
+// One tag and how many posts plus projects carry it, after normalization
+export interface TagCount {
+  tag: string;
+  count: number;
+}
+
 // Unified shape for the search index so posts and projects can share one Fuse instance
 export type SearchableItem =
   | { kind: "post"; slug: string; metadata: PostMetadata; content: string }
