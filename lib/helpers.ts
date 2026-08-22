@@ -304,6 +304,7 @@ export async function getFeaturedItems(limit = 3): Promise<FeaturedItem[]> {
       featured: project.featured === true,
       // A project with neither a write-up nor a body still has the listing
       href: getProjectDetailHref(project) ?? "/projects",
+      image: project.image,
     })),
   ];
 

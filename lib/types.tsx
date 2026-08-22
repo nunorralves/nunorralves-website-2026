@@ -62,6 +62,8 @@ export interface FeaturedItem {
   // False for items that only made the strip through the most-recent fallback
   featured: boolean;
   href: string;
+  // Cover image, relative to /public. Projects can carry one; posts cannot.
+  image?: string;
 }
 
 // One tag and how many posts plus projects carry it, after normalization
