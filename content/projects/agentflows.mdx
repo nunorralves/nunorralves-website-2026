@@ -74,7 +74,11 @@ architecture with the reason attached.
 - **The write boundary is enforced by diff, never by a tool allowlist.** `bash` can run
   `git checkout` and a write tool can reach any path, so no capability list makes "this agent
   changes nothing" true. The tree is snapshotted before an agent step and compared after;
-  anything outside that agent's declared paths is rolled back and the step fails.
+  anything outside that agent's declared paths is rolled back and the step fails. The snapshot
+  keeps the bytes rather than a digest, because a digest can tell you a file was deleted and
+  only the content can put it back. What a boundary cannot do is protect you from an agent
+  inside it: an engineer allowed to write `src/**` is allowed to empty it. That is what the
+  worktree is for.
 - **`why` is mandatory on every step, and may not restate the name.** It is the only line of
   intent the board, the terminal and the trace will ever show, so `commit: Commit the changes`
   is refused by the call that wrote it rather than by the person reading the board a day later.
@@ -84,10 +88,10 @@ architecture with the reason attached.
 - **Two criteria settle a run, not one.** Every step must have passed *and* the workflow's own
   acceptance must hold. They differ on purpose: a code step that ran a red test suite did its
   job perfectly, so the step succeeded while the run must not.
-- **`claude -p --bare` is never passed.** It is the flag every automation guide recommends, and
-  it silently disables subscription login and bills the API instead. A guard inside both argv
-  builders refuses it and a test asserts it is absent. The entire cost model rests on that one
-  flag not reappearing in a refactor.
+- **A rule a reviewer would miss belongs in a guard, not a comment.** One flag on one runtime
+  silently changes which account is billed. It is refused inside both argv builders and a test
+  asserts it never appears on a command line, because the reviewer who would catch it in a diff
+  is the one who is not reading that diff.
 
 ## One data path
 
@@ -182,8 +186,12 @@ cannot modify the machinery that grades it.
   personas is not a chain - there is no step boundary to hang a handoff on - so it needs its own
   engine rather than a flag on this one. It would reuse the trace, the personas and the budgets,
   and share nothing else.
-- **Runtime-authored plans**, worth building only once several workflows exist and a shape
-  recurs that none of them fits. Today the workflow function is the plan.
+- **Runtime-authored plans**, which is the one thing on this list that argues with the premise.
+  Today the Python function is the plan, and the step list exists before anything runs. The
+  deferred version lets an agent emit a step list at runtime, validates it against the roster
+  and persists it before a single step executes - a new authoring path in front of the same
+  executor, rather than a model steering the run as it goes. Worth building only once several
+  workflows exist and a shape recurs that none of them fits.
 - **Crash resume, Docker isolation, a cross-run cost ledger.** All captured, none scheduled.
   Worktrees plus the write boundary already cover the realistic failure modes.
 
