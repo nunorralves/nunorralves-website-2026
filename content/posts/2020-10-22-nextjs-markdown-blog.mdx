@@ -11,7 +11,7 @@ description: >
 
 ![Create Simple Blog with Next.js and Markdown](/images/2020-10-22-nextjs-markdown-blog/cover.jpg)
 
-A blog where you write in Markdown and publish with minimal ceremony — no CMS, no database, no build-time API calls. This tutorial walks through exactly that: a [Next.js](https://nextjs.org/) (v9.5, the latest at time of writing) site that reads local `.md` files at build time, parses frontmatter with `gray-matter`, renders content with `react-markdown`, and generates a page per post via dynamic routing.
+A blog where you write in Markdown and publish with minimal ceremony - no CMS, no database, no build-time API calls. This tutorial walks through exactly that: a [Next.js](https://nextjs.org/) (v9.5, the latest at time of writing) site that reads local `.md` files at build time, parses frontmatter with `gray-matter`, renders content with `react-markdown`, and generates a page per post via dynamic routing.
 
 ## What is Next.js
 
@@ -245,7 +245,7 @@ module.exports = {
 
 Now, let's create a dynamic route! For this, we will create a `post` folder under `pages` and a file `[slug].js` under newly created folder `post`. Also create another folder named `posts` at root, where markdown blog posts will be added. Next.js let us add brackets to a page to create these dynamic routes (slugs) and make possible to access what page was called using this slug inside the file.
 
-Now create `pages/post/[slug].js` — this is the dynamic route that renders individual posts:
+Now create `pages/post/[slug].js` - this is the dynamic route that renders individual posts:
 
 ```js
 import Link from "next/link";
@@ -443,8 +443,8 @@ At this point you have:
 - A dynamic `[slug].js` route rendering each post with frontmatter metadata and Markdown body
 - Shared layout, header, and footer components
 - A central `site.config.json` so nothing is hardcoded
-- Everything statically generated — no server runtime, no database
+- Everything statically generated - no server runtime, no database
 
-**What's missing (and why it's intentional):** No styling, no pagination, no RSS, no tags. This is the minimum viable blog — add the features you actually need, not the ones every blog template ships.
+**What's missing (and why it's intentional):** No styling, no pagination, no RSS, no tags. This is the minimum viable blog - add the features you actually need, not the ones every blog template ships.
 
 If you prefer you can also check or download the source code from [github.com/nunorralves/blog-lab/tree/main/tech/nextjs-markdown-blog](https://github.com/nunorralves/blog-lab/tree/main/tech/nextjs-markdown-blog).

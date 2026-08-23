@@ -1,0 +1,217 @@
+---
+title: "agentflows"
+date: "2026-08-22"
+tags: [python, agents, multi-agent, sqlite, cli, react]
+published: true
+featured: true
+status: active
+description: "Coded, multi-step agent workflows against real repositories, with a board that shows what is happening while it is still happening. Under active development, and the interesting parts are the constraints."
+image: "/images/projects/agentflows/cover.png"
+---
+
+Most agent frameworks let a model decide what happens next. That is the feature, and it is
+also the reason you cannot run the same chain twice and get the same shape of work. agentflows
+takes the opposite position: **the workflow is a Python function**, it decides sequencing,
+retries and acceptance, and the agents do the work inside one bounded step. Nothing about the
+graph is chosen by a model at runtime.
+
+It is a working application, not a paper. Seven of the ten phases are built, tested and
+running against real repositories on my machine. It is not finished, it is not public yet, and
+this page is as much an invitation to argue with the design as it is a description of it.
+
+## Where it is right now
+
+| Phase | What it is | State |
+|---|---|---|
+| **P0-P2** | Skeleton, configuration and catalogue resolution, the SQLite trace | built |
+| **P3** | Two runtime adapters behind one contract | built |
+| **P4** | The runtime: the step primitive, checks, write boundary, budgets | built |
+| **P5** | Four coded workflows and the CLI | built |
+| **P6** | Worktree isolation and the human merge gate | built |
+| **P7** | The JSON API and the board, layout C | built |
+| **P8** | Two more layouts and the waterfall | next |
+| **P9** | The operator layer, so an assistant can drive the CLI | after that |
+
+406 tests, none of which make a live model call: the adapter tests run against recorded
+streams, because a test that spent money on every run is a test you eventually stop running.
+
+![The board: the triage rail on the left, the selected run's timeline on the right](/images/projects/agentflows/cover.png)
+
+## What it actually does
+
+You point it at one or more repositories in a `config.yaml`, name which agents that workspace
+uses, and run a chain:
+
+```bash
+af run plan_build "add a /health endpoint that reports DB connectivity" -w health-app
+af ask architect ./PRD.md          # one-shot: no repo, no diff, no write boundary
+af serve                           # the board, on 127.0.0.1:8848
+```
+
+Four chains ship today, one file each:
+
+```
+workflow         chain                                       agents
+ask              ask(agent) -> record                        -
+investigate_fix  investigate(scout) -> fix(engineer) ->      scout, engineer
+                 test -> repair(engineer)*
+plan_build       plan(architect) -> build(engineer) -> test  architect, engineer
+                 -> fix(engineer)* -> commit
+review_change    capture -> review(code-reviewer) -> record  code-reviewer
+```
+
+Adding a workflow is adding a file. There is no registry to edit, so there is none to forget
+to edit.
+
+## The decisions I would defend
+
+Everything below started as an argument with myself, and each one is written down in the
+architecture with the reason attached.
+
+- **A step starts as `failed`, and only a clean exit flips it.** A step that died mid-flight
+  therefore reads correctly without anything having had to notice that it died. The reverse
+  default gives you a trace full of work that never finished, marked green.
+- **The write boundary is enforced by diff, never by a tool allowlist.** `bash` can run
+  `git checkout` and a write tool can reach any path, so no capability list makes "this agent
+  changes nothing" true. The tree is snapshotted before an agent step and compared after;
+  anything outside that agent's declared paths is rolled back and the step fails.
+- **`why` is mandatory on every step, and may not restate the name.** It is the only line of
+  intent the board, the terminal and the trace will ever show, so `commit: Commit the changes`
+  is refused by the call that wrote it rather than by the person reading the board a day later.
+- **A parse failure or a failed check re-prompts the same session.** The correction names
+  exactly what was wrong and costs one message, against an agent that still remembers the task.
+  A cold restart throws the context away and pays for it twice.
+- **Two criteria settle a run, not one.** Every step must have passed *and* the workflow's own
+  acceptance must hold. They differ on purpose: a code step that ran a red test suite did its
+  job perfectly, so the step succeeded while the run must not.
+- **`claude -p --bare` is never passed.** It is the flag every automation guide recommends, and
+  it silently disables subscription login and bills the API instead. A guard inside both argv
+  builders refuses it and a test asserts it is absent. The entire cost model rests on that one
+  flag not reappearing in a refactor.
+
+## One data path
+
+Agents write to SQLite as they work, and every reader polls SQLite. Four tables, and one query
+is the whole read path:
+
+```sql
+select rowid, * from events where run_id = ? and rowid > ? order by rowid limit ?;
+```
+
+The live view and the full history are that same query at a different cadence, which is why
+there is no push transport, no ingest endpoint and no replay path to keep in sync. The database
+is WAL with autocommit, so a reader sees a run's events while the run is still working and
+never blocks it. Files are the raw record and the database is the queryable mirror: losing the
+database loses nothing that cannot be rebuilt from disk.
+
+## The board
+
+The board is one screen: a rail of runs on the left, the selected run on the right. What makes
+it useful is not the rendering, it is the grouping.
+
+**Lanes are what a run wants from you**, not its raw state - Needs you, Review, Running,
+Stalled, Queued, Finished. `rate_limited` sits under Running, because on a subscription plan
+that is the cost of the plan and not an error. A card leads with the current step's `why`
+rather than the workflow name, which is the payoff for `why` being mandatory.
+
+![A run that stopped to ask, answered in place](/images/projects/agentflows/ask.png)
+
+A run that needs an answer shows its question with an input box next to it. Answering resumes
+the same agent session instead of starting a new one.
+
+![One step expanded: tool calls, the rejected attempt, and every check with its per-item result](/images/projects/agentflows/step.png)
+
+An expanded agent step shows its tool calls, the exact prompts that were sent, the handoff as
+accepted, and every check with per-item results - including which attempt a correction happened
+on and what the violation said. A check that verified nothing is not green: "verified nothing"
+must never be indistinguishable from "verified everything".
+
+**The board never spawns a process.** Queueing a run writes a request file; a separate
+`af next` claims it and executes it. One spawn path, and no daemon to supervise.
+
+## Autonomous inside, gated at the merge
+
+A workspace can be set to `worktree` isolation, and then every run gets a fresh `git worktree`
+on its own branch. The run is free to work there, and it stops at `review` instead of `done`.
+
+```bash
+af review 20260823-101010-a1b2c3   # the branch, the diff stat, every step's handoff
+af accept 20260823-101010-a1b2c3   # records that a human looked. Merges nothing
+af reject 20260823-101010-a1b2c3 "the tests were never run"
+```
+
+`accept` does not merge, and nothing in the application removes a worktree on its own. The
+merge is your own git command against a branch the app will not touch. That is the line I did
+not want to blur: an agent may be trusted to work unattended, and still not be trusted to put
+the work on your main branch while you are not looking.
+
+## How it is built
+
+```
+src/agentflows/
+  config.py       workspaces, rosters, defaults, and validation that collects
+  trace.py        four tables, WAL, one cursor query
+  runtime.py      the step primitive, the correction loop, the run directory
+  checks.py       predicates run after a step, against what the handoff claims
+  permissions.py  the write boundary, enforced by diff
+  worktree.py     isolation and the merge gate
+  cli.py          af run / ask / list / status / tail / kill / review / serve / next
+  adapters/       pi on OpenRouter, claude_code on the subscription
+  workflows/      coded chains, one file each - discovered, never registered
+web/              the board: React, TypeScript, Tailwind, built by Vite
+```
+
+Python 3.12 and `uv`, about 7,000 lines of source against 4,900 lines of tests. Node is a
+build-time dependency only: `af serve` serves the built bundle and answers the API from the
+trace, and nothing in the run path knows Node exists.
+
+The application is deliberately **not** inside the repositories it edits. An agent physically
+cannot modify the machinery that grades it.
+
+## What comes next
+
+- **The waterfall (P8).** Steps on a time axis, one lane per owner, a rejected attempt visible
+  as its own segment. Duration and gaps should read as shape rather than as numbers - that is
+  what makes the observability claim true instead of decorative. It is a rearrangement of the
+  same five components, not a rewrite, and the API already returns the per-attempt timings that
+  nothing yet renders.
+- **The operator layer (P9).** A markdown document, not a subsystem, so an assistant can drive
+  the CLI: translate the request into a sharper prompt, pick the workflow, launch, poll, report
+  what failed verbatim. It does no workflow work itself.
+- **A teams engine**, deferred on purpose. A budget-terminated conversation among several
+  personas is not a chain - there is no step boundary to hang a handoff on - so it needs its own
+  engine rather than a flag on this one. It would reuse the trace, the personas and the budgets,
+  and share nothing else.
+- **Runtime-authored plans**, worth building only once several workflows exist and a shape
+  recurs that none of them fits. Today the workflow function is the plan.
+- **Crash resume, Docker isolation, a cross-run cost ledger.** All captured, none scheduled.
+  Worktrees plus the write boundary already cover the realistic failure modes.
+
+## Why this might matter to you
+
+If you run engineering teams, the question underneath all of this is not "can an agent write
+the code". It is: what would have to be true before you let one run unattended against a
+repository that matters. My answer so far is four things - a chain that a person wrote, a
+boundary that is checked rather than promised, a trace that is honest about failure, and a
+human at the merge - and the rest is implementation.
+
+The repository is private for now, licensed AGPL-3.0 and intended to go public once the
+license protection is worth having. I would like to hear from you if any of this is close to
+something you are doing:
+
+- You have tried to put agents on real work and hit the trust boundary rather than the
+  capability one. I would like to know where yours sits.
+- You think one of the decisions above is wrong. Tell me which and why - each of them is a
+  trade I made deliberately, and being wrong in private is not better than being corrected in
+  public.
+- You want to talk about this kind of platform work in a hiring, advisory or collaboration
+  context.
+
+[Email me](mailto:nunorralves@gmail.com?subject=agentflows) or find me on
+[LinkedIn](https://www.linkedin.com/in/nralves/).
+
+---
+
+Screenshots on this page show layout C of the board, from the design the shipped board was
+built to. They will be replaced with captures of the running application as the remaining
+layouts land. agentflows is licensed under the GNU Affero General Public License v3.

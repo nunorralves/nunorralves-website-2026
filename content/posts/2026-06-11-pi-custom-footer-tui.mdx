@@ -217,7 +217,7 @@ export default function (pi: ExtensionAPI) {
 
 Start with `pi -e .pi/extensions/alert-status.ts` (no custom footer loaded) and you'll see `⚠ 3 alerts` appear in the default footer alongside model/thinking/clock. No `setFooter` needed.
 
-> 📦 **Download:** [alert-status.ts](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi/extensions/alert-status.ts) — drop into `.pi/extensions/` and load with `pi -e .pi/extensions/alert-status.ts`
+> 📦 **Download:** [alert-status.ts](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-custom-footer-tui/.pi/extensions/alert-status.ts) - drop into `.pi/extensions/` and load with `pi -e .pi/extensions/alert-status.ts`
 
 The key difference: `setFooter` replaces the default. `setStatus` augments it. If you're using a custom footer _and_ want status entries, read them via `footerData.getExtensionStatuses()` in your footer's `render()` - they won't appear automatically.
 

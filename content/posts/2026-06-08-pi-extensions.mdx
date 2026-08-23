@@ -160,7 +160,7 @@ export default function (pi: ExtensionAPI) {
     if (!ok) {
       return { block: true, reason: `User blocked command matching "${matched}"` };
     }
-    // User confirmed — let it run (return nothing = pass through)
+    // User confirmed - let it run (return nothing = pass through)
   });
 }
 ```
@@ -189,13 +189,13 @@ We'll build a `/jira` command that fetches issue details from the Jira REST API.
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
-  // Pull from env vars — never hardcode tokens
+  // Pull from env vars - never hardcode tokens
   const JIRA_BASE_URL = process.env.JIRA_BASE_URL;
   const JIRA_EMAIL = process.env.JIRA_EMAIL;
   const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
 
   pi.registerCommand("jira", {
-    description: "Fetch Jira issue details — usage: /jira ISSUE-123",
+    description: "Fetch Jira issue details - usage: /jira ISSUE-123",
     handler: async (args, ctx) => {
       // Validate args
       if (!args || !args.trim()) {
@@ -255,7 +255,7 @@ export default function (pi: ExtensionAPI) {
         const priority = issue.fields.priority?.name ?? "None";
 
         const message = [
-          `**${issue.key}** — ${summary}`,
+          `**${issue.key}** - ${summary}`,
           `Status: ${status} | Assignee: ${assignee} | Priority: ${priority}`,
           `🔗 ${JIRA_BASE_URL}/browse/${issue.key}`,
         ].join("\n");
@@ -313,7 +313,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 export default function (pi: ExtensionAPI) {
-  // Load a project context file — if it exists at the project root,
+  // Load a project context file - if it exists at the project root,
   // inject its contents before every agent turn.
   // If it doesn't exist, the extension is a no-op.
 
@@ -327,7 +327,7 @@ export default function (pi: ExtensionAPI) {
         contextBlock = fs.readFileSync(contextPath, "utf-8").trim();
       }
     } catch {
-      // File missing or unreadable — extension stays silent
+      // File missing or unreadable - extension stays silent
       contextBlock = null;
     }
   });
@@ -360,16 +360,16 @@ Here's what a knowledge worker's context file might look like:
 
 ## Recent Decisions
 
-- 2026-06-01: Postponed Redis Cluster upgrade to Q4 — vendor stability concerns.
+- 2026-06-01: Postponed Redis Cluster upgrade to Q4 - vendor stability concerns.
   Decision owner: Marco. See Confluence: /wiki/ARCH-2026-06-01.
 - 2026-05-28: Adopted TypeScript strict mode across all new services.
   Decision owner: Lena. RFC approved.
 
 ## Active Risks
 
-- Payment timeout bug in production — intermittent, affecting ~2% of transactions.
+- Payment timeout bug in production - intermittent, affecting ~2% of transactions.
   Marco investigating. No RCA yet.
-- Search endpoint returning 500s under load — Ana taking this after onboarding docs.
+- Search endpoint returning 500s under load - Ana taking this after onboarding docs.
 
 ## Open Questions
 
@@ -394,14 +394,14 @@ By now you've built skills (posts 02-03) and extensions (this post). The boundar
 
 | You want to... | Use a skill when... | Use an extension when... |
 |---|---|---|
-| Teach the agent a procedure | The procedure can be described in plain English and the LLM can follow it reliably | N/A — this is always a skill |
+| Teach the agent a procedure | The procedure can be described in plain English and the LLM can follow it reliably | N/A - this is always a skill |
 | Structure language output | The format is a template the LLM can interpolate into | You need precise data validation (JSON schema, field presence checks) |
-| Intercept dangerous operations | N/A — skills can't intercept events | You need `tool_call` with `{ block: true }` |
+| Intercept dangerous operations | N/A - skills can't intercept events | You need `tool_call` with `{ block: true }` |
 | Add a slash command | The command just triggers a skill: `/skill:my-skill` | You need argument parsing, API calls, structured error handling |
 | Integrate with an external API | The LLM can suggest curl commands and parse the output | You need auth, error handling, response parsing, or the API has side effects |
-| Inject context into every prompt | N/A — skills can't hook into `before_agent_start` | You need dynamic system prompt modification based on project state |
-| Modify tool results | N/A — skills can't intercept `tool_result` | You need to transform, filter, or enrich tool output before the model sees it |
-| Build a TUI widget | N/A — skills have no UI access | You need `ctx.ui` for dialogs, status bars, overlays, footers |
+| Inject context into every prompt | N/A - skills can't hook into `before_agent_start` | You need dynamic system prompt modification based on project state |
+| Modify tool results | N/A - skills can't intercept `tool_result` | You need to transform, filter, or enrich tool output before the model sees it |
+| Build a TUI widget | N/A - skills have no UI access | You need `ctx.ui` for dialogs, status bars, overlays, footers |
 | Chain a multi-step workflow | The steps are language-only and reliability is acceptable | High reliability requirement, or steps involve precise computation |
 | Share across machines/teams | A Pi Package with `skills/` directory | A Pi Package with `pi.extensions` in package.json |
 
@@ -434,4 +434,4 @@ You know where extensions live, how to test them with `pi -e`, the event lifecyc
 - **Post 05: Custom Footer & TUI** - shaping the Pi interface with footer widgets, status indicators, themes, and custom overlays. Extensions have a UI dimension we haven't touched yet.
 - [Pi Extension documentation](https://pi.dev/docs/latest/extensions) - the full event reference and advanced patterns
 - Try combining ideas: a context injector that reads from Confluence, a `/sprint` command that fetches active Jira issues, a guard that blocks destructive git operations
-- The [safety-gate, jira-command, and project-context source files](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-extensions/.pi/extensions) from this post — copy-paste ready
+- The [safety-gate, jira-command, and project-context source files](https://github.com/nunorralves/blog-lab/tree/main/tech/pi-extensions/.pi/extensions) from this post - copy-paste ready
