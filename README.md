@@ -133,9 +133,22 @@ The site comes up on [http://localhost:3000](http://localhost:3000).
 
 ## Tests
 
-`tests/e2e/` holds the Playwright suite, which runs in CI on every push. The
-config starts the dev server itself and reuses one that is already running, so
-`npm run test:e2e` is enough.
+`tests/e2e/` holds the Playwright suite, which runs in CI on every push.
+`npm run test:e2e` is enough: the config builds the site and serves it with
+`next start` on its own.
+
+**The suite runs against a production build, not `next dev`.** Under the dev
+server every route compiles on first request, and with the suite fully
+parallel the first worker to reach a cold page waits on Turbopack while the
+others queue behind it. That blew the 30s test timeout often enough that two
+consecutive runs failed four and then five different specs, always an `h1`
+that never appeared, and never the same set twice. Nothing was wrong with the
+pages. Serving a build removes on-demand compilation, and means the suite
+exercises what actually ships.
+
+If a dev server is already running on port 3000 it is reused instead, which
+keeps the fast edit-and-rerun loop available at the cost of those same compile
+races. `retries` is 1 locally and 2 in CI to absorb them. CI always builds.
 
 Three of the specs exist to stop regressions that already happened once:
 
