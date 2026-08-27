@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SocialLinks } from "app/components/SocialLinks";
 import { ABOUT_URL, personJsonLd } from "lib/person";
 
@@ -66,11 +67,34 @@ export default function AboutPage() {
           <h2 className='text-xl font-semibold mb-4'>
             What I build outside work
           </h2>
+          <p className='mb-4 font-normal'>
+            Mostly agent systems at the moment: a terminal coding agent of my
+            own, skills and extensions for it, multi-agent setups that do not
+            behave the way the demos imply. Also a barcode scanner that scores
+            supermarket food, this site itself, and a bench power supply,
+            because I never entirely left embedded systems behind.
+          </p>
+          {/* The page exists to let someone check whether I still build
+              things, so it has to hand them the evidence rather than assert
+              it. Characterised rather than enumerated: the list changes, and
+              /projects is already the list. */}
           <p className='font-normal'>
-            Mostly agent systems: a terminal coding agent of my own, skills and
-            extensions for it, multi-agent setups that do not behave the way the
-            demos imply. Some of it is hardware, because I never entirely left
-            embedded systems behind. This site is on the list too.
+            The{" "}
+            <Link
+              href='/projects'
+              className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+            >
+              projects page
+            </Link>{" "}
+            has the current set, and the{" "}
+            <Link
+              href='/blog'
+              className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+            >
+              writing
+            </Link>{" "}
+            covers agent systems, platform engineering and engineering
+            leadership.
           </p>
         </section>
 
