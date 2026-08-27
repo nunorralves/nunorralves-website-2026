@@ -14,3 +14,33 @@ test('navigation: open a post from the homepage', async ({ page }) => {
   const heading = page.locator('h1', { hasText: /Pi Multi-Agent Teams/i }).first();
   await expect(heading).toBeVisible({ timeout: 7000 });
 });
+
+// Home used to be font-medium on every page, which read as an active-page
+// marker that was wrong everywhere except the homepage.
+test.describe('the nav marks the current section', () => {
+  const cases: [string, string | null][] = [
+    ['/', 'Home'],
+    ['/blog', 'Writing'],
+    // A post lives under /posts but is what /blog lists, so Writing owns it.
+    ['/posts/2026-06-08-pi-extensions', 'Writing'],
+    ['/projects', 'Projects'],
+    ['/projects/agentflows', 'Projects'],
+    ['/about', 'About'],
+    // A tag page mixes posts and projects, so neither link owns it.
+    ['/tags/ai', null],
+  ];
+
+  for (const [path, expected] of cases) {
+    test(`${path} marks ${expected ?? 'nothing'}`, async ({ page }) => {
+      await page.goto(path);
+      const current = page.locator('nav ul li a[aria-current="page"]');
+      if (expected === null) {
+        await expect(current).toHaveCount(0);
+      } else {
+        // Exactly one, or the marker means nothing.
+        await expect(current).toHaveCount(1);
+        await expect(current).toHaveText(expected);
+      }
+    });
+  }
+});

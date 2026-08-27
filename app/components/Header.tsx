@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 
@@ -14,16 +15,28 @@ import ThemeToggle from "./ThemeToggle";
 // a claim about priority. Anyone who wants the bio is already one click from
 // it via the intro on the landing page.
 const NAV_LINKS = [
-  // Home carries the weight it had before this file grew a mobile menu. It is
-  // unconditional, not an active-page marker, which is worth a second look.
-  { href: "/", label: "Home", className: "font-medium" },
-  { href: "/blog", label: "Writing" },
+  { href: "/", label: "Home" },
+  // A post lives under /posts, not /blog, but it is the thing /blog lists, so
+  // reading one should light up Writing rather than nothing at all. Same for a
+  // project detail page, which /projects already covers by prefix.
+  { href: "/blog", label: "Writing", also: ["/posts"] },
   { href: "/projects", label: "Projects" },
   { href: "/about", label: "About" },
 ];
 
+// "/" would prefix-match every route, so it is the one that has to be exact.
+// /tags/* deliberately matches nothing: a tag page mixes posts and projects,
+// so neither link owns it.
+function isActive(pathname: string, href: string, also: string[] = []) {
+  if (href === "/") return pathname === "/";
+  return [href, ...also].some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`),
+  );
+}
+
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     // Not px-4 on mobile: the body columns are a bare w-11/12, so padding here
@@ -42,13 +55,20 @@ export default function Header() {
             take. Only the text links collapse. */}
         <div className='flex items-center gap-1 md:gap-6 lg:gap-8'>
           <ul className='hidden md:flex items-center gap-6 lg:gap-8'>
-            {NAV_LINKS.map(({ href, label, className }) => (
-              <li key={href}>
-                <Link href={href} className={`text-foreground ${className ?? ""}`}>
-                  {label}
-                </Link>
-              </li>
-            ))}
+            {NAV_LINKS.map(({ href, label, also }) => {
+              const active = isActive(pathname, href, also);
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`text-foreground ${active ? "font-medium" : ""}`}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           <Link href='/search' aria-label='Search' className='text-foreground p-2.5'>
@@ -81,17 +101,23 @@ export default function Header() {
           id='mobile-menu'
           className='card md:hidden absolute left-0 right-0 top-full z-50 py-2'
         >
-          {NAV_LINKS.map(({ href, label, className }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                onClick={() => setMenuOpen(false)}
-                className={`block px-4 py-3 text-foreground ${className ?? ""}`}
-              >
-                {label}
-              </Link>
-            </li>
-          ))}
+          {NAV_LINKS.map(({ href, label, also }) => {
+            const active = isActive(pathname, href, also);
+            return (
+              <li key={href}>
+                <Link
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`block px-4 py-3 text-foreground ${
+                    active ? "font-medium" : ""
+                  }`}
+                >
+                  {label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </header>
