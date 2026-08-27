@@ -35,11 +35,14 @@ export default function AboutPage() {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>About</h1>
 
+        {/* Deliberately says nothing about the current employer. "What I do
+            now" is one line below and owns that, so the page states it once
+            rather than twice in three paragraphs, and this paragraph survives
+            a job change untouched. */}
         <p className='mb-10 text-lg'>
-          I am Nuno Alves. I run Platform engineering at Entrust, in identity
-          verification. Twenty-five years in software, twenty of them leading
-          teams, from embedded systems through carrier grade network software to
-          cloud platforms.
+          I am Nuno Alves, an engineering leader. Twenty-five years in software,
+          twenty of them leading teams, from embedded systems through carrier
+          grade network software to cloud platforms.
         </p>
 
         {/* Deliberately short. LinkedIn is the claim and this site is the
@@ -50,10 +53,11 @@ export default function AboutPage() {
         <section className='mb-12'>
           <h2 className='text-xl font-semibold mb-4'>What I do now</h2>
           <p className='mb-4 font-normal'>
-            Platform at Entrust means the layer everyone else builds on:
-            workflow orchestration, the public APIs, the reliability work nobody
-            notices until it is missing, and more recently agentic AI and EU
-            digital identity.
+            I run Platform engineering at Entrust, in identity verification.
+            Platform there means the layer everyone else builds on: workflow
+            orchestration, the public APIs, the reliability work nobody notices
+            until it is missing, and more recently agentic AI and EU digital
+            identity.
           </p>
           <p className='font-normal'>
             The job has not changed much in ten years, only the altitude. Decide
