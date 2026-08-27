@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { PostCard } from "app/components/PostCard";
 import { Pagination } from "app/components/Pagination";
-import {
-  getAllPostsMetadataWithSlug,
-  getPostsGroupedByMonth,
-  getTagCounts,
-} from "lib/helpers";
-import { PostMetadataWithSlug } from "lib/types";
-import { OUTDATED_LISTING_MARKER, isOutdated } from "lib/outdated";
+import { TagCloud } from "app/components/TagCloud";
+import { getAllPostsMetadataWithSlug, getTagCounts } from "lib/helpers";
 
-const POSTS_PER_PAGE = 5;
+// Ten, not five. Five split eleven posts across three pages, which is
+// pagination as overhead on a corpus you can read in a sitting.
+const POSTS_PER_PAGE = 10;
 
 export const metadata: Metadata = {
   title: "Writing",
@@ -25,11 +23,14 @@ interface BlogPageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
+// Posts first. This page carried a 37-tag cloud above the cards and a
+// by-date index below them, so on a phone the first post sat 1122px down and
+// the same posts appeared twice. The index moved to /archive, which is where
+// it lived before /blog absorbed it, and the tail of the cloud folds away.
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const { page } = await searchParams;
-  const [posts, postsByMonth, tags] = await Promise.all([
+  const [posts, tags] = await Promise.all([
     getAllPostsMetadataWithSlug(),
-    getPostsGroupedByMonth(),
     getTagCounts(),
   ]);
 
@@ -48,36 +49,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Writing</h1>
         <p className='mb-10 font-normal'>
-          Everything I have written here, newest first, plus the full index by
-          date. Tags cover posts and projects alike.
+          Everything I have written here, newest first. Tags cover posts and
+          projects alike.
         </p>
 
         <section className='mb-12'>
-          <h2 className='text-xl font-semibold mb-4'>Browse by tag</h2>
-          {tags.length === 0 ? (
-            <p className='font-normal'>No tags found.</p>
-          ) : (
-            <div className='flex flex-wrap gap-3'>
-              {tags.map(({ tag, count }) => (
-                <Link
-                  key={tag}
-                  href={`/tags/${encodeURIComponent(tag)}`}
-                  className='inline-flex items-center gap-3 px-3 py-1 rounded-full border border-[var(--color-border)] hover:shadow-sm transition-colors'
-                >
-                  <span className='text-[var(--color-foreground)] text-sm'>
-                    {tag}
-                  </span>
-                  <span className='text-[var(--color-secondary)] text-xs px-2 py-0.5 rounded-full bg-[var(--color-tag)]'>
-                    {count}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className='mb-12'>
-          <h2 className='text-xl font-semibold mb-4'>Recent posts</h2>
           {paginatedPosts.length > 0 ? (
             <>
               {paginatedPosts.map((post) => (
@@ -97,57 +73,21 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           )}
         </section>
 
+        {/* The dense by-date list, for when you know the post exists and want
+            to find it rather than be sold it. */}
+        <section className='mb-12'>
+          <Link
+            href='/archive'
+            className='inline-flex items-center gap-1.5 text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+          >
+            Browse the full archive by date
+            <ArrowRight className='w-4 h-4' />
+          </Link>
+        </section>
+
         <section>
-          <h2 className='text-xl font-semibold mb-4'>All posts by date</h2>
-          {postsByMonth.size > 0 ? (
-            <div className='space-y-8'>
-              {[...postsByMonth.entries()].map(([year, months]) => (
-                <div key={year} className='space-y-4'>
-                  <h3 className='text-lg font-semibold'>{year}</h3>
-
-                  {[...months.entries()].map(([month, monthPosts]) => (
-                    <div
-                      key={month}
-                      className='pl-4 border-l border-[var(--color-border)]'
-                    >
-                      <h4 className='text-base font-medium text-[var(--color-secondary)] mb-2'>
-                        {month} ({monthPosts.length})
-                      </h4>
-
-                      <ul className='space-y-2'>
-                        {monthPosts.map((post: PostMetadataWithSlug) => (
-                          <li key={post.slug}>
-                            <Link
-                              href={`/posts/${post.slug}`}
-                              className='text-[var(--color-foreground)] hover:text-[var(--color-link)] transition-colors'
-                            >
-                              {post.title}
-                            </Link>
-                            <span className='text-sm text-[var(--color-secondary)] ml-2'>
-                              (
-                              {new Date(post.date).toLocaleDateString("en-US", {
-                                day: "numeric",
-                              })}
-                              )
-                            </span>
-
-                            {isOutdated(post) && (
-                              <span className='text-sm text-[var(--color-secondary)] ml-2'>
-                                <span aria-hidden='true'>&middot;</span>{" "}
-                                {OUTDATED_LISTING_MARKER}
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className='font-normal'>No posts found.</p>
-          )}
+          <h2 className='text-xl font-semibold mb-4'>Browse by tag</h2>
+          <TagCloud tags={tags} />
         </section>
       </div>
     </div>

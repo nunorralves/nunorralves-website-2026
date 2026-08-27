@@ -9,8 +9,9 @@ const SUPPRESSED_TITLE = '5 Management Books';
 const RECENT_TITLE = 'Multi-Agent';
 
 test.describe('outdated listing marker', () => {
-  // /blog page 1 is the five newest posts, so the old ones are only on a tag
-  // page or deeper in the pagination. The tag page is the stable surface.
+  // /blog is paginated, so an old post may or may not be on page 1 depending
+  // on how many exist. The tag page is the stable surface for a card, and
+  // /archive - which lists every post - is the stable one for the index.
   test('marks an outdated post on its card', async ({ page }) => {
     await page.goto('/tags/nextjs');
 
@@ -20,7 +21,7 @@ test.describe('outdated listing marker', () => {
   });
 
   test('marks an outdated post in the by-date index', async ({ page }) => {
-    await page.goto('/blog');
+    await page.goto('/archive');
 
     const entry = page.locator('li', { hasText: SUPERSEDED_TITLE });
     await expect(entry).toBeVisible({ timeout: 7000 });
@@ -30,7 +31,7 @@ test.describe('outdated listing marker', () => {
   // The whole point of the suppression flag: old, but not stale, and the
   // listing has to say so by saying nothing.
   test('leaves a suppressed post unmarked in the by-date index', async ({ page }) => {
-    await page.goto('/blog');
+    await page.goto('/archive');
 
     const entry = page.locator('li', { hasText: SUPPRESSED_TITLE });
     await expect(entry).toBeVisible({ timeout: 7000 });
@@ -38,7 +39,7 @@ test.describe('outdated listing marker', () => {
   });
 
   test('leaves a recent post unmarked', async ({ page }) => {
-    await page.goto('/blog');
+    await page.goto('/archive');
 
     const entry = page.locator('li', { hasText: RECENT_TITLE }).first();
     await expect(entry).toBeVisible({ timeout: 7000 });

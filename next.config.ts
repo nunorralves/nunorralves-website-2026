@@ -5,9 +5,14 @@ const nextConfig: NextConfig = {
   // or it would swallow the named post redirects above it.
   async redirects() {
     return [
-      // /blog absorbed both of these. /tags/[tag] is untouched - it is linked
-      // from every post card, project card and project detail page.
-      { source: "/archive", destination: "/blog", permanent: true },
+      // /blog absorbed /tags. /tags/[tag] is untouched - it is linked from
+      // every post card, project card and project detail page.
+      //
+      // /archive is NOT here any more: the by-date index was moved back out of
+      // /blog onto its own page, so the URL resolves again. The old entry was
+      // permanent, so this 308 stays cached in browsers and crawlers for a
+      // while - expect /archive to keep bouncing to /blog for some visitors
+      // until it expires.
       { source: "/tags", destination: "/blog", permanent: true },
 
       // The 2020/2021 posts came from the old pages-router site, which served

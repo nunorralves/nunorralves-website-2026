@@ -112,7 +112,8 @@ it at a blog post instead. See `getProjectDetailHref` in `lib/links.ts`.
 | --- | --- |
 | `/` | Landing page: short intro, "Selected work", recent posts |
 | `/about` | The longer background, and what this site is for |
-| `/blog` | All writing, paginated, plus a tag cloud and a full index by date |
+| `/blog` | All writing, paginated, plus the tag cloud |
+| `/archive` | The full index by date, grouped by year and month |
 | `/posts/[slug]` | A post |
 | `/projects` | Project cards |
 | `/projects/[slug]` | A project, for those with a body |
@@ -120,7 +121,9 @@ it at a blog post instead. See `getProjectDetailHref` in `lib/links.ts`.
 | `/search` | Client side search across both |
 | `/sitemap.xml` | Generated from the filesystem by `app/sitemap.ts` |
 
-`/archive` and `/tags` were folded into `/blog` and survive only as redirects.
+`/tags` was folded into `/blog` and survives only as a redirect. `/archive` was
+folded in too, then moved back out: the by-date index pushed the first post
+1122px down a phone screen and duplicated the card list above it.
 
 ## Redirects
 
