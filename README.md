@@ -79,7 +79,8 @@ it at a blog post instead. See `getProjectDetailHref` in `lib/links.ts`.
 
 | Route | What it is |
 | --- | --- |
-| `/` | Landing page: intro, "Selected work", recent posts |
+| `/` | Landing page: short intro, "Selected work", recent posts |
+| `/about` | The longer background, and what this site is for |
 | `/blog` | All writing, paginated, plus a tag cloud and a full index by date |
 | `/posts/[slug]` | A post |
 | `/projects` | Project cards |

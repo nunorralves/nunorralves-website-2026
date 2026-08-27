@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
 import { Post } from "lib/types";
+import { authorRef } from "lib/person";
 import mdxComponents from "mdx-components";
 
 export async function generateStaticParams() {
@@ -84,10 +85,7 @@ export default async function PostLayout({
     headline: post.metadata.title,
     description: post.metadata.description || post.metadata.title,
     datePublished: new Date(post.metadata.date).toISOString(),
-    author: {
-      "@type": "Person",
-      name: "Nuno R. Alves",
-    },
+    author: authorRef,
     url: canonicalUrl,
   };
 

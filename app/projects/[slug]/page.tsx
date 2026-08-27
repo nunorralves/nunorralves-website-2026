@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getProjectBySlug, getProjectsWithBody } from "lib/helpers";
 import { Project, ProjectStatus } from "lib/types";
+import { authorRef } from "lib/person";
 import mdxComponents from "mdx-components";
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -97,10 +98,7 @@ export default async function ProjectLayout({
     description: metadata.description || metadata.title,
     dateCreated: new Date(metadata.date).toISOString(),
     ...(metadata.repo ? { codeRepository: metadata.repo } : {}),
-    author: {
-      "@type": "Person",
-      name: "Nuno R. Alves",
-    },
+    author: authorRef,
     url: canonicalUrl,
   };
 

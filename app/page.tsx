@@ -19,29 +19,26 @@ export default async function Home() {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
         <p className='mb-4 text-lg'>
-          Engineering leader. Twenty years building platforms and the teams
-          behind them, from embedded systems to cloud.<br></br>
-          Currently Senior Director of Engineering, Platform at Entrust
-          (formerly Onfido).
+          Engineering leader. Twenty-five years in software, twenty of them
+          leading teams, currently Senior Director of Engineering, Platform at
+          Entrust in identity verification.
         </p>
-        <p className='mb-3 font-normal'>
-          By day I run Platform engineering at Entrust in the identity
-          verification space: workflow orchestration, APIs, reliability, and
-          more recently agentic AI and EU digital identity. Twenty years of
-          leading engineering teams before that, from embedded systems to cloud
-          platforms, most of it spent on the parts where the architecture and
-          the org chart refuse to line up.<br></br>
-          This site is the other half. It is where I build things myself, mostly
-          agent systems and small tools, and write about what actually breaks
-          when you do. If you came from LinkedIn, that is the record of the
-          work. This is the workshop: rougher, more current, and more honest
-          about the parts that did not work.
+        <p className='mb-6 font-normal'>
+          This site is the workshop, not the CV. I build agent systems and small
+          tools here, and write about what actually breaks when you do.
         </p>
-        {/* Last line of the intro rather than woven into it: at the end it
-            reads as a footnote instead of a defensive opening. Also in the
-            footer, since posts get read without anyone passing through here. */}
-        <p className='mb-6 text-sm'>
-          Written on my own time. Views here are mine, not my employer&apos;s.
+        {/* The biography this intro used to carry now lives on /about, which
+            lets the landing page be a hook rather than both at once. The
+            "views are my own" line went with it: under a two sentence intro a
+            disclaimer read as a third of the page, and the footer carries it
+            site wide anyway. */}
+        <p className='mb-6'>
+          <Link
+            href='/about'
+            className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+          >
+            More about me and how I got here
+          </Link>
         </p>
         <div className='pt-4 mb-12'>
           <SocialLinks />

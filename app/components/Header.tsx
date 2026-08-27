@@ -22,6 +22,13 @@ export default function Header() {
           <Link href='/projects' className='text-foreground'>
             Projects
           </Link>
+          {/* Last of the text links rather than second. The site's whole
+              position is that it is the workshop and LinkedIn is the CV, and
+              nav order is a claim about priority. Anyone who wants the bio is
+              already one click from it via the intro on the landing page. */}
+          <Link href='/about' className='text-foreground'>
+            About
+          </Link>
           <Link href='/search' aria-label='Search' className='text-foreground'>
             <Search className='w-5 h-5' />
           </Link>

@@ -1,19 +1,19 @@
 import { Github, Linkedin, Mail, Twitter } from "lucide-react";
+import { PROFILES } from "lib/person";
 
 // The home page hand-rolled these four icons as inline SVG, pasted straight
 // from lucide - the same package Header, PostCard and ProjectCard already
 // import from. Shared here so the footer can carry them too: a post reached
 // from search never renders the home page, so without this the profiles are
 // unreachable from most of the site.
+//
+// The URLs themselves come from lib/person, so these icons and the `sameAs`
+// array in the Person JSON-LD on /about cannot fall out of step.
 const LINKS = [
-  { href: "https://github.com/nunorralves", label: "GitHub", Icon: Github },
-  {
-    href: "https://www.linkedin.com/in/nralves/",
-    label: "LinkedIn",
-    Icon: Linkedin,
-  },
-  { href: "mailto:nunorralves@gmail.com", label: "Email", Icon: Mail },
-  { href: "https://twitter.com/nunorralves", label: "Twitter", Icon: Twitter },
+  { href: PROFILES.github, label: "GitHub", Icon: Github },
+  { href: PROFILES.linkedin, label: "LinkedIn", Icon: Linkedin },
+  { href: `mailto:${PROFILES.email}`, label: "Email", Icon: Mail },
+  { href: PROFILES.twitter, label: "Twitter", Icon: Twitter },
 ];
 
 export function SocialLinks({ size = "w-6 h-6" }: { size?: string }) {

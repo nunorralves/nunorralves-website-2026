@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title:
     "nunorralves.pt",
   description:
-    "Nuno Alves. Engineering leadership, platform engineering, and hands-on work with AI coding agents. Notes, projects, and experiments.",
+    "Nuno Alves. Notes and projects on AI coding agents, platform engineering, and engineering leadership. The workshop, not the CV.",
 };
 
 export default function RootLayout({
