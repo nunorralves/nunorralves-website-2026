@@ -18,6 +18,10 @@
   --color-tag: #2e2e33;
   --color-link: #61afef;
   --color-link-hover: #84c0f5;
+  /* The post age notice. --color-secondary would have done here, but at
+     4.03:1 on a light card it misses AA for text this size, so the notice
+     carries its own foreground. 5.6:1 dark, 6.9:1 light, both on --color-card */
+  --color-notice-fg: #a8a9aa;
 }
 
 .light {
@@ -35,6 +39,7 @@
   --color-tag: #e5e5e5;
   --color-link: #0969da;
   --color-link-hover: #0550ae;
+  --color-notice-fg: #5a5a5a;
 }
 
 body {
@@ -217,3 +222,28 @@ article a:hover,
   border-left: 2px solid rgb(100, 100, 255);
 }
 
+
+/* ===== POST AGE NOTICE ===== */
+/* A quiet aside above the post body, not an alert: card background rather
+   than a tint, --color-tertiary rather than the link blue the Callout uses,
+   and one step down in size. */
+.post-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin-bottom: 2rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  border-left: 2px solid var(--color-tertiary);
+  background-color: var(--color-card);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-notice-fg);
+}
+
+/* `body p` above is unlayered and would otherwise repaint the rendered note
+   in --color-secondary, which is the contrast the token exists to avoid */
+.post-notice p {
+  margin: 0;
+  color: var(--color-notice-fg);
+}

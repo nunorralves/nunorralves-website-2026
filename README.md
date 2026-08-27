@@ -58,6 +58,25 @@ under the wrong month in the archive while its URL said otherwise, so
 | `published` | yes | `false` hides the post everywhere, including the sitemap |
 | `description` | no | Used for the meta description, cards and Open Graph |
 | `featured` | no | Opts the post into the "Selected work" strip on the home page |
+| `outdated` | no | `false` suppresses the age notice, `true` forces it on. Omitted lets the date decide |
+| `outdatedNote` | no | Custom notice text replacing the generic age wording. Inline markdown, links included |
+
+### The age notice
+
+Posts older than a threshold get a quiet aside above the body saying so. All of
+it lives in `lib/outdated.ts`: the threshold (`OUTDATED_AFTER_YEARS`, 3), the
+generic wording, and the precedence between the two frontmatter fields. Changing
+any of it is a one file edit.
+
+`outdated: false` wins over everything, including a note left behind. Otherwise
+an `outdatedNote` replaces the generic wording, `outdated: true` forces the
+generic wording on regardless of age, and failing all three the date decides.
+
+The threshold is evaluated at build time, so a post crosses it on the next
+deploy rather than on its anniversary. The notice renders on `/posts/[slug]`
+only, never on cards or listings, and nothing about it reaches the meta
+description, the JSON-LD or `robots` - these posts still get traffic and the
+notice is for the humans in it.
 
 ### Project frontmatter
 

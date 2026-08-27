@@ -8,6 +8,8 @@ import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
 import { Post } from "lib/types";
 import { authorRef } from "lib/person";
+import { getOutdatedNotice } from "lib/outdated";
+import { OutdatedNotice } from "app/components/OutdatedNotice";
 import mdxComponents from "mdx-components";
 
 export async function generateStaticParams() {
@@ -75,6 +77,10 @@ export default async function PostLayout({
 
   const canonicalUrl = `https://nunorralves.pt/posts/${slug}`;
 
+  // Deliberately kept out of the metadata and the JSON-LD below: the notice
+  // is for humans who land on an old post, and these posts should keep ranking.
+  const outdatedNotice = getOutdatedNotice(post.metadata);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -119,6 +125,9 @@ export default async function PostLayout({
           )}
         </div>
       </header>
+
+      {outdatedNotice && <OutdatedNotice notice={outdatedNotice} />}
+
       <script
         type='application/ld+json'
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

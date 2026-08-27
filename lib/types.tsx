@@ -6,6 +6,12 @@ export interface PostMetadata {
   description?: string;
   // Opt this post into the home page's "Selected work" strip
   featured?: boolean;
+  // Age notice above the post body. `false` suppresses it, `true` forces it
+  // on regardless of age, omitted lets the date decide. See lib/outdated.ts
+  outdated?: boolean;
+  // Custom notice text replacing the generic age wording. Inline markdown,
+  // links included, rendered through the same MDX pipeline as the post body
+  outdatedNote?: string;
 }
 
 export interface PostMetadataWithSlug extends PostMetadata {
