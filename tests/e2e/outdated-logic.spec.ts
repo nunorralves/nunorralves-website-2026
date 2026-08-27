@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { OUTDATED_AFTER_YEARS, getOutdatedNotice } from '../../lib/outdated';
+import { OUTDATED_AFTER_YEARS, getOutdatedNotice, isOutdated } from '../../lib/outdated';
 
 // The automatic age branch has no live post behind it: every pre-2022 post
 // carries an explicit note or an explicit opt-out, and everything else is from
@@ -74,4 +74,20 @@ test('outdated logic: an empty note falls back rather than rendering blank', () 
   );
 
   expect(notice?.isCustom).toBe(false);
+});
+
+// The listing marker reuses the banner's decision rather than a second rule,
+// so a post can never be marked in a listing and bare on its own page.
+test('outdated logic: the listing marker agrees with the banner', () => {
+  const cases = [
+    { date: new Date('2020-11-02') },
+    { date: new Date('2020-11-02'), outdated: false },
+    { date: new Date('2020-11-02'), outdatedNote: 'Covers Next.js 10.' },
+    { date: new Date('2026-07-04') },
+    { date: new Date('2026-07-04'), outdated: true },
+  ];
+
+  for (const metadata of cases) {
+    expect(isOutdated(metadata, NOW)).toBe(getOutdatedNotice(metadata, NOW) !== null);
+  }
 });

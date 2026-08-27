@@ -1,5 +1,9 @@
 import type { PostMetadata } from "./types";
 
+// Type-only import and no `fs`, deliberately: PostCard renders inside the
+// client-side SearchBar, so anything it reaches ends up in the browser
+// bundle. Same constraint as lib/links.ts.
+
 // How old a post has to be before it picks up an age notice on its own.
 // Everything about the notice - when it fires, what it says, and how a post
 // opts out of it - lives in this file, so changing the threshold or the
@@ -51,4 +55,17 @@ export function getOutdatedNotice(
   }
 
   return null;
+}
+
+// What listings say next to the date. It repeats the notice's own words
+// rather than coining a second vocabulary: a card and the post it links to
+// should not describe the same post differently, and a listing marker that
+// reads louder than the notice it points at would invert the whole point.
+export const OUTDATED_LISTING_MARKER = "may be out of date";
+
+// Whether a listing should mark this post at all. Same decision the banner
+// makes, so a post showing nothing on its own page shows nothing in a
+// listing either, and neither can drift from the other.
+export function isOutdated(metadata: OutdatedInput, now?: Date): boolean {
+  return getOutdatedNotice(metadata, now) !== null;
 }

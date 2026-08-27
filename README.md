@@ -73,10 +73,22 @@ an `outdatedNote` replaces the generic wording, `outdated: true` forces the
 generic wording on regardless of age, and failing all three the date decides.
 
 The threshold is evaluated at build time, so a post crosses it on the next
-deploy rather than on its anniversary. The notice renders on `/posts/[slug]`
-only, never on cards or listings, and nothing about it reaches the meta
-description, the JSON-LD or `robots` - these posts still get traffic and the
-notice is for the humans in it.
+deploy rather than on its anniversary. Nothing about the notice reaches the
+meta description, the JSON-LD or `robots` - these posts still get traffic and
+the notice is for the humans who land on them.
+
+The full notice renders on `/posts/[slug]` only. Listings get a muted marker
+next to the date instead, reading "may be out of date": a date says when a
+post was written, which is a fact the reader already has, while the marker
+says whether it still holds, which is the judgment the frontmatter encodes.
+Without it the two old posts that are still fine and the three that are
+superseded look identical in every listing.
+
+Both read the same `getOutdatedNotice`, so a post cannot be marked in a
+listing and bare on its own page. `lib/outdated.ts` therefore has no `fs`
+import and only a type import from `lib/types`: `PostCard` renders inside the
+client-side `SearchBar`, so anything it reaches ships to the browser. Same
+constraint as `lib/links.ts`.
 
 ### Project frontmatter
 

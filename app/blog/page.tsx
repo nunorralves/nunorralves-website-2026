@@ -8,6 +8,7 @@ import {
   getTagCounts,
 } from "lib/helpers";
 import { PostMetadataWithSlug } from "lib/types";
+import { OUTDATED_LISTING_MARKER, isOutdated } from "lib/outdated";
 
 const POSTS_PER_PAGE = 5;
 
@@ -129,6 +130,13 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                               })}
                               )
                             </span>
+
+                            {isOutdated(post) && (
+                              <span className='text-sm text-[var(--color-secondary)] ml-2'>
+                                <span aria-hidden='true'>&middot;</span>{" "}
+                                {OUTDATED_LISTING_MARKER}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
