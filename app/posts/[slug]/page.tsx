@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
 import remarkGfm from "remark-gfm";
+import { notFound } from "next/navigation";
 // import rehypeMermaid from "rehype-mermaid";
 import { getAllPosts, getPostBySlug } from "lib/helpers";
 import { Calendar, Tag } from "lucide-react";
+import { Post } from "lib/types";
 import mdxComponents from "mdx-components";
 
 export async function generateStaticParams() {
@@ -11,24 +14,22 @@ export async function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
 }
 
-export async function generateMetadata({ params }: { params: any }) {
-  let slug: string | undefined;
+// Mirrors app/projects/[slug]/page.tsx: params is always a Promise in Next 16,
+// and an unknown slug throws out of getPostBySlug rather than returning null.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
 
-  if (params && typeof (params as Promise<any>)?.then === "function") {
-    const awaited = await params;
-    slug = awaited?.slug;
-  } else if (params && typeof params === "object") {
-    slug = params.slug;
+  let post: Post;
+  try {
+    post = await getPostBySlug(slug);
+  } catch {
+    return { title: "Post", description: "Post details" };
   }
 
-  if (!slug || typeof slug !== "string") {
-    return {
-      title: "Post",
-      description: "Post details",
-    } as any;
-  }
-
-  const post = await getPostBySlug(slug);
   const title = post.metadata.title;
   const description = post.metadata.description || title;
   const date = new Date(post.metadata.date).toISOString();
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: { params: any }) {
       title,
       description,
     },
-  } as any;
+  };
 }
 
 export default async function PostLayout({
@@ -60,8 +61,17 @@ export default async function PostLayout({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params; // ← Await here
-  const post = await getPostBySlug(slug);
+  const { slug } = await params;
+
+  // A slug with no .mdx behind it is a 404, not a 500. Without this it threw
+  // into error.tsx, which is a server error page and tells crawlers to retry.
+  let post: Post;
+  try {
+    post = await getPostBySlug(slug);
+  } catch {
+    notFound();
+  }
+
   const canonicalUrl = `https://nunorralves.pt/posts/${slug}`;
 
   const jsonLd = {
@@ -113,7 +123,6 @@ export default async function PostLayout({
       </header>
       <script
         type='application/ld+json'
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className='prose max-w-none'>

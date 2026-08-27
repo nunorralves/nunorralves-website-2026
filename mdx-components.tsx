@@ -1,6 +1,7 @@
 // mdx-components.tsx (at root of project) - used by next-mdx-remote
 
 import type { MDXComponents } from 'mdx/types'
+import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -39,10 +40,13 @@ const components: MDXComponents = {
   ),
 
   // ===== IMAGES =====
-  img: (props: any) => (
+  img: ({ src, alt, title }: ComponentPropsWithoutRef<'img'>) => (
+    // Markdown only ever hands us a string src, but the img element type also
+    // allows Blob, which next/image will not take.
     <Image
-      {...props}
-      alt={props.alt || ''}
+      src={typeof src === 'string' ? src : ''}
+      alt={alt || ''}
+      title={title}
       width={800}
       height={600}
       className="rounded-lg my-8"
@@ -122,7 +126,13 @@ const components: MDXComponents = {
   ),
 
   // ===== CUSTOM: CALLOUT =====
-  Callout: ({ children, type = 'info' }: any) => (
+  Callout: ({
+    children,
+    type = 'info',
+  }: {
+    children?: ReactNode
+    type?: 'info' | 'warning' | 'danger'
+  }) => (
     <div
       className={`callout callout-${type} p-4 my-4 rounded`}
       style={{

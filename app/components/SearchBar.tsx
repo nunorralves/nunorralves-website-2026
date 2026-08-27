@@ -3,37 +3,34 @@
 import { searchItems } from "lib/search";
 import { SearchableItem } from "lib/types";
 import { Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PostCard } from "./PostCard";
 import { ProjectCard } from "./ProjectCard";
 
 export default function SearchBar({ items }: { items: SearchableItem[] }) {
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchableItem[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  const debounceRef = useRef<number | null>(null);
-
+  // Only the timer touches state, so nothing is set synchronously during the
+  // effect - that is what made this cascade renders on every keystroke.
   useEffect(() => {
-    if (query.trim() === "") {
-      setSearchResults([]);
-      return;
-    }
+    if (query.trim() === "") return;
 
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-    debounceRef.current = window.setTimeout(() => {
-      const results = searchItems(items, query);
-      setSearchResults(results.map((result) => result.item));
-    }, 300);
+  // Emptying the input clears the list on the next render instead of 300ms
+  // later, without needing a second setState to reset it.
+  const activeQuery = query.trim() === "" ? "" : debouncedQuery;
 
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [query, items]);
+  const searchResults: SearchableItem[] = useMemo(
+    () =>
+      activeQuery === ""
+        ? []
+        : searchItems(items, activeQuery).map((result) => result.item),
+    [items, activeQuery],
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
