@@ -1,10 +1,7 @@
 import { PostCard } from "./components/PostCard";
 import { FeaturedCard } from "./components/FeaturedCard";
 import Link from "next/link";
-import {
-  getAllPostsMetadataWithSlug,
-  getFeaturedItems,
-} from "../lib/helpers";
+import { getAllPostsMetadataWithSlug, getFeaturedItems } from "../lib/helpers";
 
 const RECENT_POSTS = 3;
 
@@ -21,18 +18,23 @@ export default async function Home() {
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
         <p className='mb-4 text-lg'>
-          Senior Engineering Director at Entrust (former Onfido). Platform, solutions and the
-          teams that run them.
+          Engineering leader. Twenty years building platforms and the teams
+          behind them, from embedded systems to cloud.<br></br>
+          Currently Senior Director of Engineering, Platform at Entrust
+          (formerly Onfido).
         </p>
         <p className='mb-6 font-normal'>
-          I help engineering teams build scalable platforms that keep
-          services reliable and developers productive. I enjoy building useful
-          systems, collaborating with thoughtful people, and untangling problems
-          that looked much simpler on the whiteboard. Across embedded systems,
-          on-prem, and cloud platforms, I've learned that great software comes
-          from clear communication, practical trade-offs, and strong teams. I
-          use this space to share ideas, lessons, and occasional reflections on
-          engineering and leadership that might help others on a similar path.
+          By day I run Platform engineering at Entrust in the identity
+          verification space: workflow orchestration, APIs, reliability, and
+          more recently agentic AI and EU digital identity. Twenty years of
+          leading engineering teams before that, from embedded systems to cloud
+          platforms, most of it spent on the parts where the architecture and
+          the org chart refuse to line up.<br></br>
+          This site is the other half. It is where I build things myself, mostly
+          agent systems and small tools, and write about what actually breaks
+          when you do. If you came from LinkedIn, that is the record of the
+          work. This is the workshop: rougher, more current, and more honest
+          about the parts that did not work.
         </p>
         <div className='flex items-center gap-2 pt-4 mb-12'>
           <a
