@@ -60,6 +60,7 @@ test.describe('mobile layout', () => {
     await expect(menu.locator('a')).toHaveText([
       'Home',
       'Writing',
+      'Archive',
       'Projects',
       'About',
     ]);
@@ -85,6 +86,30 @@ test.describe('mobile layout', () => {
   });
 });
 
+test.describe('tablet layout', () => {
+  // Five text links need 679px and the bar has 608px at 768px, so the inline
+  // row starts at lg rather than md. A tablet gets the menu.
+  test.use({ viewport: { width: 768, height: 1024 } });
+
+  test('still uses the menu, and the bar does not overflow', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(
+      page.locator('button[aria-controls="mobile-menu"]'),
+    ).toBeVisible();
+
+    const { navWidth, navScrollWidth } = await page.evaluate(() => {
+      const nav = document.querySelector('nav')!;
+      return {
+        navWidth: Math.round(nav.getBoundingClientRect().width),
+        navScrollWidth: nav.scrollWidth,
+      };
+    });
+    expect(navScrollWidth).toBeLessThanOrEqual(navWidth + 1);
+  });
+});
+
 test.describe('desktop layout', () => {
   test.use({ viewport: DESKTOP });
 
@@ -96,6 +121,7 @@ test.describe('desktop layout', () => {
     await expect(page.locator('nav ul li a')).toHaveText([
       'Home',
       'Writing',
+      'Archive',
       'Projects',
       'About',
     ]);

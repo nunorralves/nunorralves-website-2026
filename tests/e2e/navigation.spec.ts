@@ -21,6 +21,7 @@ test.describe('the nav marks the current section', () => {
   const cases: [string, string | null][] = [
     ['/', 'Home'],
     ['/blog', 'Writing'],
+    ['/archive', 'Archive'],
     // A post lives under /posts but is what /blog lists, so Writing owns it.
     ['/posts/2026-06-08-pi-extensions', 'Writing'],
     ['/projects', 'Projects'],

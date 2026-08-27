@@ -20,6 +20,9 @@ const NAV_LINKS = [
   // reading one should light up Writing rather than nothing at all. Same for a
   // project detail page, which /projects already covers by prefix.
   { href: "/blog", label: "Writing", also: ["/posts"] },
+  // Next to Writing rather than at the end: it is the same content in a
+  // different shape, so the two writing surfaces belong together.
+  { href: "/archive", label: "Archive" },
   { href: "/projects", label: "Projects" },
   { href: "/about", label: "About" },
 ];
@@ -52,9 +55,13 @@ export default function Header() {
 
         {/* Search and the theme toggle stay on the bar at every width - they
             are one tap each, and burying them costs more than the room they
-            take. Only the text links collapse. */}
-        <div className='flex items-center gap-1 md:gap-6 lg:gap-8'>
-          <ul className='hidden md:flex items-center gap-6 lg:gap-8'>
+            take. Only the text links collapse.
+
+            lg, not md: five text links need 679px and the bar only has 608px
+            at 768px, so the row spilled into the gutter through the whole
+            tablet range. Tablets get the menu. */}
+        <div className='flex items-center gap-1 lg:gap-8'>
+          <ul className='hidden lg:flex items-center gap-8'>
             {NAV_LINKS.map(({ href, label, also }) => {
               const active = isActive(pathname, href, also);
               return (
@@ -83,7 +90,7 @@ export default function Header() {
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls='mobile-menu'
-            className='md:hidden p-2 text-foreground'
+            className='lg:hidden p-2 text-foreground'
           >
             {menuOpen ? (
               <X className='w-6 h-6' />
@@ -99,7 +106,7 @@ export default function Header() {
       {menuOpen && (
         <ul
           id='mobile-menu'
-          className='card md:hidden absolute left-0 right-0 top-full z-50 py-2'
+          className='card lg:hidden absolute left-0 right-0 top-full z-50 py-2'
         >
           {NAV_LINKS.map(({ href, label, also }) => {
             const active = isActive(pathname, href, also);
