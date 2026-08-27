@@ -34,7 +34,8 @@ export default async function Home() {
           agent systems and small tools, and write about what actually breaks
           when you do. If you came from LinkedIn, that is the record of the
           work. This is the workshop: rougher, more current, and more honest
-          about the parts that did not work.
+          about the parts that did not work.<br></br>
+          Written on my own time. Views here are mine, not my employer's.
         </p>
         <div className='flex items-center gap-2 pt-4 mb-12'>
           <a

@@ -5,7 +5,7 @@ export default function Footer() {
     <footer>
       <div className='footer flex flex-row justify-center items-center py-4 mx-auto'>
         <p className='text-sm'>
-          © 2026 -{" "}
+          © 2026 {" "}
           <span>
             <Link
               href='https://nunorralves.pt'
@@ -14,6 +14,7 @@ export default function Footer() {
               nunorralves.pt
             </Link>
           </span>
+          {" "}-{" "}Written on my own time. Views here are mine, not my employer's.
         </p>
       </div>
     </footer>
