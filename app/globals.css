@@ -64,7 +64,10 @@ body {
   }
 
   .header {
-    height: var(--header-height);
+    /* min-height, not height: the bar's own controls are taller than 60px
+       once they carry tap targets, and a fixed height let it spill over the
+       first line of the page instead of growing. */
+    min-height: var(--header-height);
   }
 
   .tag {
@@ -94,6 +97,11 @@ code {
   border-radius: 0.25rem;
   font-size: 0.85em;
   background-color: var(--color-code-inline-bg);
+  /* A block has `overflow-x: auto` to fall back on; an inline span in a
+     paragraph does not, so a single long identifier pushed the whole page
+     sideways on a phone. Breaks only when the token cannot fit a line on its
+     own, so ordinary inline code still wraps at its edges. */
+  overflow-wrap: break-word;
 }
 
 /* ===== LISTS ===== */

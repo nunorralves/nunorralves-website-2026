@@ -96,7 +96,7 @@ export default async function PostLayout({
   };
 
   return (
-    <article className='mx-auto w-2/3 py-8'>
+    <article className='mx-auto w-11/12 md:w-2/3 py-8'>
       <header className='mb-12'>
         <h1 className='text-3xl font-bold mb-4'>{post.metadata.title}</h1>
 

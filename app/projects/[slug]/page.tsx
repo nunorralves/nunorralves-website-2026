@@ -103,7 +103,7 @@ export default async function ProjectLayout({
   };
 
   return (
-    <article className='mx-auto w-2/3 py-8'>
+    <article className='mx-auto w-11/12 md:w-2/3 py-8'>
       <Link
         href='/projects'
         className='project-back inline-flex items-center gap-1.5 mb-6 text-sm transition-colors'

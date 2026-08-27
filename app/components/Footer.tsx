@@ -4,9 +4,9 @@ import { SocialLinks } from "./SocialLinks";
 export default function Footer() {
   return (
     <footer className='border-t border-[var(--color-border)] mt-16'>
-      {/* Same w-2/3 column as every page body, so the rule above it lines up
-          with the content rather than running the full width of the window. */}
-      <div className='footer mx-auto w-2/3 py-6'>
+      {/* Same column as every page body, so the rule above it lines up with
+          the content rather than running the full width of the window. */}
+      <div className='footer mx-auto w-11/12 md:w-2/3 py-6'>
         <div className='flex flex-wrap items-center justify-between gap-4'>
           <p className='text-sm'>
             © 2026{" "}
