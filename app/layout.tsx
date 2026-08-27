@@ -6,9 +6,9 @@ import Footer from "./components/Footer";
 
 export const metadata: Metadata = {
   title:
-    "Nuno Alves. Engineering leadership, platform engineering, and hands-on work with AI coding agents. Notes, projects, and experiments",
+    "nunorralves.pt",
   description:
-    "Posts on AI coding agents, platform engineering, engineering leadership, and the occasional electronics project.",
+    "Nuno Alves. Engineering leadership, platform engineering, and hands-on work with AI coding agents. Notes, projects, and experiments",
 };
 
 export default function RootLayout({

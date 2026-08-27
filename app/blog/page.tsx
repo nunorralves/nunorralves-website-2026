@@ -14,7 +14,7 @@ const POSTS_PER_PAGE = 5;
 export const metadata: Metadata = {
   title: "Writing",
   description:
-    "Posts by Nuno Alves on software engineering, platform and infrastructure, leadership, and electronics.",
+    "Posts on AI coding agents, platform engineering, engineering leadership, and the occasional electronics project.",
   alternates: {
     canonical: "https://nunorralves.pt/blog",
   },
