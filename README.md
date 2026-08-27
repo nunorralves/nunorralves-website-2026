@@ -8,8 +8,99 @@
 ![GitHub forks](https://img.shields.io/github/forks/nunorralves/nunorralves-website-2026)
 ![GitHub License](https://img.shields.io/github/license/nunorralves/nunorralves-website-2026)
 
+My personal site and blog: writing on AI coding agents, platform engineering,
+engineering leadership, and the occasional electronics project, plus the side
+projects and experiments behind them.
 
-My Personal Website and Blog, showcasing my latest work and content about SW Development, Tutorials, Programming Tips, Management, Electronics, IOT and some others that might be interesting to share.
+Live at [nunorralves.pt](https://nunorralves.pt).
+
+## Stack
+
+| Concern | Choice |
+| --- | --- |
+| Framework | Next.js 16 (App Router, Turbopack) with React 19 |
+| Language | TypeScript, strict mode |
+| Styling | Tailwind CSS v4, with CSS custom properties for theming |
+| Content | MDX files on disk, rendered by `next-mdx-remote/rsc` |
+| Frontmatter | `gray-matter` |
+| Code blocks | `rehype-pretty-code` (Shiki), plus `remark-gfm` for tables |
+| Search | `fuse.js`, client side over a prebuilt index |
+| Tests | Playwright end to end |
+| Analytics | Vercel Analytics |
+
+## Content model
+
+All content lives in `content/` as `.mdx`. There is no CMS and no database.
+Adding a file and pushing it is the whole publishing workflow.
+
+```
+content/
+  posts/     YYYY-MM-DD-<slug>.mdx
+  projects/  <slug>.mdx
+```
+
+**The filename is the slug.** `lib/helpers.ts` strips the `.mdx` extension and
+uses what is left as the URL segment. Nothing derives the slug from
+frontmatter, so renaming a file changes its public URL.
+
+Post filenames must start with a `YYYY-MM-DD` prefix, and that prefix has to
+match the frontmatter `date`. Those two drifted apart once, which put a post
+under the wrong month in the archive while its URL said otherwise, so
+`tests/e2e/content-dates.spec.ts` now fails the suite if they disagree.
+
+### Post frontmatter
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `title` | yes | |
+| `date` | yes | Must match the filename prefix. Drives display, ordering, archive grouping and JSON-LD |
+| `tags` | yes | Normalized to lowercase with spaces as hyphens, so `Typescript` and `typescript` share one tag page |
+| `published` | yes | `false` hides the post everywhere, including the sitemap |
+| `description` | no | Used for the meta description, cards and Open Graph |
+| `featured` | no | Opts the post into the "Selected work" strip on the home page |
+
+### Project frontmatter
+
+Projects take everything above, minus the date prefix rule, plus:
+
+| Field | Notes |
+| --- | --- |
+| `image` | Cover image relative to `/public` |
+| `repo` | Source repository URL |
+| `demo` | Live site or app URL |
+| `status` | One of `active`, `maintained`, `archived`, `on-hold`. Omitted means active |
+| `post` | Slug of a blog post that serves as this project's write-up |
+
+A project only gets its own `/projects/[slug]` page if its `.mdx` has a body.
+Without one, the card on `/projects` is the whole thing, and `post` can point
+it at a blog post instead. See `getProjectDetailHref` in `lib/links.ts`.
+
+## Routes
+
+| Route | What it is |
+| --- | --- |
+| `/` | Landing page: intro, "Selected work", recent posts |
+| `/blog` | All writing, paginated, plus a tag cloud and a full index by date |
+| `/posts/[slug]` | A post |
+| `/projects` | Project cards |
+| `/projects/[slug]` | A project, for those with a body |
+| `/tags/[tag]` | Everything carrying one tag, posts and projects alike |
+| `/search` | Client side search across both |
+| `/sitemap.xml` | Generated from the filesystem by `app/sitemap.ts` |
+
+`/archive` and `/tags` were folded into `/blog` and survive only as redirects.
+
+## Redirects
+
+**Do not delete the `redirects()` block in `next.config.ts`.** The previous
+version of this site was a Next.js pages router app that served posts at
+`/blog/<slug>`, with different slugs from the ones used today. Those URLs are
+indexed and still get traffic, and every one of them 404'd until the redirects
+were added. The rules are order sensitive: the `/blog/:slug+` catch-all has to
+stay last, and it has to be `:slug+` rather than `:slug*`, which would also
+match `/blog` itself and redirect it to itself forever.
+
+`tests/e2e/redirects.spec.ts` covers all of it, including that loop.
 
 ## Prerequisites
 
@@ -22,12 +113,38 @@ Before you begin, ensure you have met the following requirements:
 ## Running Locally
 
 ```bash
-$ git clone https://github.com/nunorralves/nunorralves-website-2026.git`
-$ cd nunorralves-website-2026
-$ npm install --legacy-peer-deps
-$ npm run dev
+git clone https://github.com/nunorralves/nunorralves-website-2026.git
+cd nunorralves-website-2026
+npm install --legacy-peer-deps
+npm run dev
 ```
+
+The site comes up on [http://localhost:3000](http://localhost:3000).
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run start` | Serve a production build |
+| `npm run lint` | ESLint |
+| `npm run test:e2e` | Playwright suite, starting the dev server if one is not already up |
+| `npm run test:e2e:headed` | The same, in a visible browser |
+
+## Tests
+
+`tests/e2e/` holds the Playwright suite, which runs in CI on every push. The
+config starts the dev server itself and reuses one that is already running, so
+`npm run test:e2e` is enough.
+
+Three of the specs exist to stop regressions that already happened once:
+
+- `redirects.spec.ts` checks every legacy `/blog/<slug>` URL still lands on its
+  post, and that `/blog` does not redirect to itself
+- `links.spec.ts` crawls every page in the sitemap and fails on a dead internal
+  link, or on any link back to the retired `/blog/<slug>` scheme
+- `content-dates.spec.ts` checks each post's filename prefix against its
+  frontmatter `date`
 
 ## License
 
-This project uses the following license: [GNU GPLv3](https://github.com/nunorralves/nunorralves-website/blob/master/LICENSE.md).
+This project uses the following license: [GNU GPLv3](https://github.com/nunorralves/nunorralves-website-2026/blob/main/LICENSE.md).
