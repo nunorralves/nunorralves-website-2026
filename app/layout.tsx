@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title:
     "nunorralves.pt",
   description:
-    "Nuno Alves. Engineering leadership, platform engineering, and hands-on work with AI coding agents. Notes, projects, and experiments",
+    "Nuno Alves. Engineering leadership, platform engineering, and hands-on work with AI coding agents. Notes, projects, and experiments.",
 };
 
 export default function RootLayout({
@@ -44,14 +44,13 @@ export default function RootLayout({
           color='#5bbad5'
         />
       </head>
-      <body className='flex flex-col mx-0 '>
-        <div className='flex-1 w-full'>
-          <Header />
-          <div className='main'>
-            <main>{children}</main>
-          </div>
-          <Footer />
-        </div>
+      <body className='flex flex-col min-h-screen mx-0'>
+        <Header />
+        {/* flex-1 keeps the footer at the bottom of short pages. This used to
+            be a min-height calc against fixed header and footer heights, which
+            silently broke the moment the footer wrapped to a second line. */}
+        <main className='flex-1'>{children}</main>
+        <Footer />
         <Analytics />
       </body>
     </html>

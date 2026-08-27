@@ -6,7 +6,7 @@ import { ProjectMetadataWithSlug } from "lib/types";
 export const metadata: Metadata = {
   title: "Projects",
   description:
-    "Side projects, experiments and hardware builds by Nuno Alves. Most of them are open source.",
+    "Things Nuno Alves builds outside of work. Agent systems, small tools, and the occasional piece of hardware. Most of them are open source.",
   alternates: {
     canonical: "https://nunorralves.pt/projects",
   },
