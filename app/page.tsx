@@ -17,10 +17,11 @@ import { isOutdated, OUTDATED_LISTING_MARKER } from "../lib/outdated";
 // reader has to go to /blog for the rest.
 const WRITING_LIST_LIMIT = 5;
 
-// The home page is a map, /blog is the index. Uncapped, the Pi series alone
-// puts seven parts in the left column against five posts in the right, and a
-// twelve part series would take the page over. Both caps link the remainder
-// to /blog, where every series still renders in full.
+// The home page is a feed, /blog is the index. Uncapped, the Pi series alone
+// puts six parts in the left column against five posts in the right, and a
+// twelve part series would take the page over. The block shows its most
+// recent parts newest first, so both columns of the Writing section read the
+// same way round, and links the rest to /blog where the series is whole.
 const HOME_SERIES_LIMIT = 2;
 const HOME_SERIES_PARTS = 3;
 
@@ -126,7 +127,7 @@ export default async function Home() {
                   <SeriesBlock
                     key={s.id}
                     series={s}
-                    maxParts={HOME_SERIES_PARTS}
+                    recent={HOME_SERIES_PARTS}
                   />
                 ))}
               </div>

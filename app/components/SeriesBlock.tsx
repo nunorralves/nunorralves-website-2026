@@ -7,9 +7,12 @@ import { OUTDATED_LISTING_MARKER, isOutdated } from "lib/outdated";
 // in a chronological list. Posts inside a series are excluded from that list
 // entirely - see app/blog/page.tsx - so each one appears exactly once.
 //
-// `maxParts` truncates the list from the end, which is why the home page can
-// show the opening of a long series without the block running away down the
-// page. /blog passes nothing and gets every part, because that is the index.
+// The block has two modes, and they are the same split as feed versus index.
+// /blog passes nothing and gets the index: every part, oldest first, grouped
+// under its phase, which is the order the series was written and read in.
+// `recent` gets the feed: the newest few parts, newest first, no phases, to
+// match the reverse chronological list of everything else beside it on the
+// home page.
 
 interface PhaseGroup {
   phase: string | undefined;
@@ -37,20 +40,31 @@ function groupByPhase(posts: Series["posts"]): PhaseGroup[] {
 
 interface SeriesBlockProps {
   series: Series;
-  // Omitted means every part. A truncated block links the remainder to /blog,
-  // where the series always renders in full.
-  maxParts?: number;
+  // Omitted means the full index. A number means the most recent that many
+  // parts, newest first, with the rest linked to /blog.
+  recent?: number;
 }
 
-export function SeriesBlock({ series, maxParts }: SeriesBlockProps) {
+export function SeriesBlock({ series, recent }: SeriesBlockProps) {
   const shown =
-    maxParts === undefined ? series.posts : series.posts.slice(0, maxParts);
+    recent === undefined ? series.posts : series.posts.slice(-recent).reverse();
   const remaining = series.posts.length - shown.length;
-  const groups = groupByPhase(shown);
 
-  // Highest part number, not newest date: parts are ordered by series_part so
-  // a part published out of turn still counts as the one furthest along.
-  const latest = series.posts[series.posts.length - 1];
+  // Phase headings are dropped in the recent mode on purpose. Phases describe
+  // an arc, and a few parts read newest first would print that arc backwards:
+  // the Pi series would show "Craft" sitting above "Foundation to Craft
+  // transition". Dates read backwards fine because nobody mistakes a list for
+  // a story. Phases do not, so they stay on /blog where the whole arc is
+  // visible and in order. Two headings over three posts is also more chrome
+  // than content.
+  const groups =
+    recent === undefined
+      ? groupByPhase(shown)
+      : [{ phase: undefined, posts: shown }];
+
+  // Lowest part number, not oldest date: parts are ordered by series_part, so
+  // one published out of turn still counts as the start.
+  const first = series.posts[0];
 
   return (
     <article className='mb-6 card p-6 border border-border rounded-lg'>
@@ -107,25 +121,24 @@ export function SeriesBlock({ series, maxParts }: SeriesBlockProps) {
         </div>
       ))}
 
-      {/* A truncated block keeps part one at the top so a reader arriving
-          cold starts where the story does, but it also has to name the
-          furthest part: series posts are excluded from the recent list beside
-          it, so without this the newest thing written would not appear on the
-          home page at all. */}
+      {/* Leading with the newest part answers "is this still going", which is
+          what the home page is for, but it drops a reader arriving cold into
+          the middle of a story. So the tail names the other end: the rest go
+          to /blog, and part one gets its own link. */}
       {remaining > 0 && (
         <p className='mt-4 pt-4 border-t border-[var(--color-border)] text-sm text-muted-foreground'>
           <Link
             href='/blog'
             className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
           >
-            {remaining} more {remaining === 1 ? "part" : "parts"}
+            {remaining} earlier {remaining === 1 ? "part" : "parts"}
           </Link>
-          {", latest "}
+          {", starting with "}
           <Link
-            href={`/posts/${latest.slug}`}
+            href={`/posts/${first.slug}`}
             className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
           >
-            {latest.title}
+            {first.title}
           </Link>
         </p>
       )}
