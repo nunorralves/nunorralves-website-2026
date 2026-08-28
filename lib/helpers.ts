@@ -315,6 +315,7 @@ export async function getFeaturedItems(limit = 3): Promise<FeaturedItem[]> {
       date: post.date,
       featured: post.featured === true,
       href: `/posts/${post.slug}`,
+      tags: post.tags,
     })),
     ...projects.map((project) => ({
       kind: "project" as const,
@@ -325,7 +326,8 @@ export async function getFeaturedItems(limit = 3): Promise<FeaturedItem[]> {
       featured: project.featured === true,
       // A project with neither a write-up nor a body still has the listing
       href: getProjectDetailHref(project) ?? "/projects",
-      image: project.image,
+      tags: project.tags,
+      status: project.status,
     })),
   ];
 

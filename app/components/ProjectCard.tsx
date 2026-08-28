@@ -4,7 +4,7 @@ import { ArrowRight, ExternalLink, Github } from "lucide-react";
 import { ProjectMetadataWithSlug, ProjectStatus } from "lib/types";
 import { getProjectDetailHref } from "lib/links";
 
-const STATUS_LABELS: Record<ProjectStatus, string> = {
+export const STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",
   maintained: "Maintained",
   archived: "Archived",

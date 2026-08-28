@@ -1,78 +1,140 @@
-import { PostCard } from "./components/PostCard";
-import { FeaturedCard } from "./components/FeaturedCard";
+import { WorkEntry } from "./components/WorkEntry";
+import { CorrectionsStrip } from "./components/CorrectionsStrip";
+import { CurrentlyRail } from "./components/CurrentlyRail";
+import { SeriesBlock } from "./components/SeriesBlock";
 import Link from "next/link";
 import { SocialLinks } from "./components/SocialLinks";
-import { getAllPostsMetadataWithSlug, getFeaturedItems } from "../lib/helpers";
+import {
+  getAllPostsMetadataWithSlug,
+  getFeaturedItems,
+  getAllSeries,
+  getAllCorrections,
+} from "../lib/helpers";
+import { multiPartSeries, seriesPostSlugs } from "../lib/series";
+import { isOutdated, OUTDATED_LISTING_MARKER } from "../lib/outdated";
 
-const RECENT_POSTS = 3;
+// How many non-series posts show in the flat "everything else" list before a
+// reader has to go to /blog for the rest.
+const WRITING_LIST_LIMIT = 5;
 
 export default async function Home() {
-  const [featured, posts] = await Promise.all([
+  const [featured, posts, series, corrections] = await Promise.all([
     getFeaturedItems(3),
     getAllPostsMetadataWithSlug(),
+    getAllSeries(),
+    getAllCorrections(),
   ]);
 
-  const recentPosts = posts.slice(0, RECENT_POSTS);
+  // A series post lives inside its block, below, and nowhere else on this
+  // page - same rule /blog follows, so a part never renders twice.
+  const blockedSeries = multiPartSeries(series);
+  const blockedSlugs = seriesPostSlugs(blockedSeries);
+  const everythingElse = posts
+    .filter((post) => !blockedSlugs.has(post.slug))
+    .slice(0, WRITING_LIST_LIMIT);
 
   return (
     <div className='container-page py-8'>
       <div className='bg-background text-foreground'>
-        <h1 className='my-4 text-3xl font-black'>Nuno Alves</h1>
-        <p className='mb-4 text-lg'>
-          Engineering leader. Twenty-five years in software, twenty of them
-          leading teams, currently Senior Director of Engineering, Platform at
-          Entrust in identity verification.
-        </p>
-        <p className='mb-6 font-normal'>
-          This site is the workshop, not the CV. I build agent systems and small
-          tools here, and write about what actually breaks when you do.
-        </p>
-        {/* The biography this intro used to carry now lives on /about, which
-            lets the landing page be a hook rather than both at once. The
-            "views are my own" line went with it: under a two sentence intro a
-            disclaimer read as a third of the page, and the footer carries it
-            site wide anyway. */}
-        <p className='mb-6'>
-          <Link
-            href='/about'
-            className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
-          >
-            More about me and how I got here
-          </Link>
-        </p>
-        <div className='pt-4 mb-12'>
-          <SocialLinks />
+        <div className='grid gap-y-8 gap-x-12 lg:grid-cols-[1fr_18rem] py-4 mb-12'>
+          <div>
+            <h1 className='mb-4 text-3xl font-black'>
+              LinkedIn is the record. This is the other half.
+            </h1>
+            {/* The distinction leads and the job qualifies it underneath,
+                rather than the other way around - opening with the title and
+                tenure buried the actual point of the page below the fold, and
+                the title already lives on /about anyway. */}
+            <p className='mb-6 text-lg'>
+              This site is the workshop, not the CV. I build agent systems and
+              small tools here, and write about what actually breaks when you
+              do.
+            </p>
+            <p className='mb-6 pt-4 border-t border-[var(--color-border)] font-normal text-[var(--color-secondary)]'>
+              Engineering leader. Twenty-five years in software, twenty of
+              them leading teams, currently Senior Director of Engineering,
+              Platform at Entrust in identity verification.
+            </p>
+            <p className='mb-6'>
+              <Link
+                href='/about'
+                className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+              >
+                More about me and how I got here
+              </Link>
+            </p>
+            <div className='pt-2'>
+              <SocialLinks />
+            </div>
+          </div>
+
+          <CurrentlyRail />
         </div>
 
         {featured.length > 0 && (
           <section className='mb-12'>
-            <h2 className='text-xl font-semibold mb-4'>Selected work</h2>
-            <div className='grid gap-6 sm:grid-cols-3 mb-6'>
+            <div className='flex items-baseline justify-between gap-4 mb-4'>
+              <h2 className='text-xl font-semibold'>Selected work</h2>
+              <Link
+                href='/projects'
+                className='text-sm text-[var(--color-secondary)] hover:text-foreground transition-colors'
+              >
+                All projects
+              </Link>
+            </div>
+            <div className='grid sm:grid-cols-2 gap-x-8'>
               {featured.map((item) => (
-                <FeaturedCard key={`${item.kind}-${item.slug}`} {...item} />
+                <WorkEntry key={`${item.kind}-${item.slug}`} {...item} />
               ))}
             </div>
-            <Link
-              href='/projects'
-              className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
-            >
-              All projects
-            </Link>
+
+            <CorrectionsStrip {...corrections} />
           </section>
         )}
 
-        {recentPosts.length > 0 && (
+        {(blockedSeries.length > 0 || everythingElse.length > 0) && (
           <section>
-            <h2 className='text-xl font-semibold mb-4'>Recent writing</h2>
-            {recentPosts.map((post) => (
-              <PostCard key={post.slug} {...post} />
-            ))}
-            <Link
-              href='/blog'
-              className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
-            >
-              All posts
-            </Link>
+            <div className='flex items-baseline justify-between gap-4 mb-4'>
+              <h2 className='text-xl font-semibold'>Writing</h2>
+              <Link
+                href='/blog'
+                className='text-sm text-[var(--color-secondary)] hover:text-foreground transition-colors'
+              >
+                All {posts.length} posts
+              </Link>
+            </div>
+            <div className='grid md:grid-cols-2 gap-x-10 gap-y-8 items-start'>
+              <div>
+                {blockedSeries.map((s) => (
+                  <SeriesBlock key={s.id} series={s} />
+                ))}
+              </div>
+              <div>
+                <h3 className='font-mono text-xs uppercase tracking-wide text-muted-foreground mb-3'>
+                  Everything else
+                </h3>
+                {everythingElse.map((post) => (
+                  <Link
+                    key={post.slug}
+                    href={`/posts/${post.slug}`}
+                    className='block py-3 border-t border-[var(--color-border)] first:border-t-0 first:pt-0 group'
+                  >
+                    <div className='font-serif text-base leading-snug group-hover:text-[var(--color-link)] transition-colors'>
+                      {post.title}
+                    </div>
+                    <div className='font-mono text-xs text-muted-foreground mt-1 flex gap-3 flex-wrap'>
+                      <time>
+                        {new Date(post.date).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                        })}
+                      </time>
+                      {isOutdated(post) && <span>{OUTDATED_LISTING_MARKER}</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </section>
         )}
       </div>

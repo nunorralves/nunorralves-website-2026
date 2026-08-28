@@ -5,8 +5,11 @@ test('navigation: open a post from the homepage', async ({ page }) => {
   // wait for main content to load
   await page.waitForSelector('main, h1, h2', { timeout: 7000 });
 
-  // Click the newest post by title - the landing page always surfaces it
-  const link = page.locator('text=Multi-Agent').first();
+  // Click the newest post by its full title - the landing page always
+  // surfaces it. Not just "Multi-Agent": the Selected work section can carry
+  // a "multi-agent" tag of its own, and a loose substring match picks
+  // whichever renders first.
+  const link = page.getByRole('link', { name: /Pi Multi-Agent Teams/i }).first();
   await expect(link).toBeVisible({ timeout: 7000 });
   await link.click();
 

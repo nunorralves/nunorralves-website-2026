@@ -66,7 +66,8 @@ export interface Project {
   content: string;
 }
 
-// A post or a project reduced to what the home page strip needs to render it
+// A post or a project reduced to what the home page's Selected work section
+// needs to render it as a typographic entry
 export interface FeaturedItem {
   kind: "post" | "project";
   slug: string;
@@ -76,8 +77,9 @@ export interface FeaturedItem {
   // False for items that only made the strip through the most-recent fallback
   featured: boolean;
   href: string;
-  // Cover image, relative to /public. Projects can carry one; posts cannot.
-  image?: string;
+  tags: string[];
+  // Posts have no status; only rendered when a project sets one
+  status?: ProjectStatus;
 }
 
 // One tag and how many posts plus projects carry it, after normalization
