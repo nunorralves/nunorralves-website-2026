@@ -3,7 +3,7 @@ import remarkGfm from "remark-gfm";
 import { Clock } from "lucide-react";
 import type { MDXComponents } from "mdx/types";
 import mdxComponents from "mdx-components";
-import type { OutdatedNotice as Notice } from "lib/outdated";
+import { OUTDATED_LISTING_MARKER, type OutdatedNotice as Notice } from "lib/outdated";
 
 // A note is one sentence, and the shared `p` carries mb-4, which would leave
 // a gap under it. Everything else stays on the shared map, so a link inside a
@@ -24,6 +24,12 @@ export function OutdatedNotice({ notice }: { notice: Notice }) {
     <aside aria-label='Note on the age of this post' className='post-notice'>
       <Clock className='w-3.5 h-3.5 mt-1 shrink-0' aria-hidden='true' />
       <div>
+        {/* A custom note is an editor's aside; the generic wording already
+            says "may be out of date" on its own, so the label repeats that
+            listing marker rather than coining a second phrase for it. */}
+        <span className='post-notice-label'>
+          {notice.isCustom ? "Note" : OUTDATED_LISTING_MARKER}
+        </span>
         {notice.isCustom ? (
           // Same pipeline as the body, minus rehype-pretty-code, which has
           // nothing to do on a sentence of prose

@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
 import remarkGfm from "remark-gfm";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 // import rehypeMermaid from "rehype-mermaid";
-import { getAllPosts, getPostBySlug } from "lib/helpers";
+import { getAllPosts, getAllSeries, getPostBySlug } from "lib/helpers";
 import { Calendar, Clock, Tag } from "lucide-react";
 import { Post } from "lib/types";
-import { authorRef } from "lib/person";
+import { authorRef, PERSON_NAME, PROFILES } from "lib/person";
 import { getOutdatedNotice } from "lib/outdated";
 import { getReadingTimeMinutes } from "lib/reading-time";
 import { OutdatedNotice } from "app/components/OutdatedNotice";
+import { SeriesBreadcrumb, SeriesNav } from "app/components/SeriesNav";
 import mdxComponents from "mdx-components";
 
 export async function generateStaticParams() {
@@ -86,6 +88,19 @@ export default async function PostLayout({
   // frontmatter, so it can never drift from what the post actually says.
   const readingTimeMinutes = getReadingTimeMinutes(post.content);
 
+  // A series of one has nothing to be grouped with yet - same rule
+  // app/blog/page.tsx uses for the series block, see lib/series.ts. An
+  // unpublished post carrying a series field will not be found in the
+  // group either, since it is built from published posts only.
+  const rawSeries = post.metadata.series
+    ? (await getAllSeries()).find((s) => s.id === post.metadata.series)
+    : undefined;
+  const series =
+    rawSeries && rawSeries.posts.length > 1 ? rawSeries : undefined;
+  const seriesIndex = series
+    ? series.posts.findIndex((p) => p.slug === slug)
+    : -1;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -103,7 +118,17 @@ export default async function PostLayout({
   return (
     <article className='container-prose py-8'>
       <header className='mb-12'>
+        {series && seriesIndex >= 0 && (
+          <SeriesBreadcrumb series={series} currentIndex={seriesIndex} />
+        )}
+
         <h1 className='text-3xl font-bold mb-4'>{post.metadata.title}</h1>
+
+        {post.metadata.description && (
+          <p className='font-serif text-lg leading-snug text-[var(--color-secondary)] mb-6'>
+            {post.metadata.description}
+          </p>
+        )}
 
         <div className='flex flex-wrap items-center gap-4 text-sm text-muted-foreground'>
           <time className='flex items-center gap-1'>
@@ -164,6 +189,28 @@ export default async function PostLayout({
           }}
         />
       </div>
+
+      {series && seriesIndex >= 0 && (
+        <SeriesNav series={series} currentIndex={seriesIndex} />
+      )}
+
+      <p className='mt-12 pt-6 border-t border-border text-sm text-[var(--color-secondary)]'>
+        Written by{" "}
+        <Link
+          href='/about'
+          className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+        >
+          {PERSON_NAME}
+        </Link>
+        , who is also reachable by{" "}
+        <a
+          href={`mailto:${PROFILES.email}`}
+          className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
+        >
+          email
+        </a>
+        .
+      </p>
     </article>
   );
 }

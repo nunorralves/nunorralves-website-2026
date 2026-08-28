@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { Series } from "lib/series";
+import { Series, seriesTitle } from "lib/series";
 import { OUTDATED_LISTING_MARKER, isOutdated } from "lib/outdated";
 
 // One card per series instead of one card per post, so seven posts written
 // as sustained work over three months do not read as seven unrelated cards
 // in a chronological list. Posts inside a series are excluded from that list
 // entirely - see app/blog/page.tsx - so each one appears exactly once.
-function seriesTitle(id: string): string {
-  return id
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 interface PhaseGroup {
   phase: string | undefined;

@@ -11,6 +11,17 @@ export interface Series {
   posts: PostMetadataWithSlug[];
 }
 
+// The frontmatter id, humanised for display - "pi" becomes "Pi", "build-a-
+// bench-power-supply" becomes "Build A Bench Power Supply". Shared by the
+// blog listing's series block and the post page's breadcrumb and series nav,
+// so the two can never describe the same series under different names.
+export function seriesTitle(id: string): string {
+  return id
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 // Groups posts sharing a `series` value, ordered by `series_part`. Order
 // comes entirely from that field, never from date, so a part written and
 // published out of turn still lands where it belongs in the series.
