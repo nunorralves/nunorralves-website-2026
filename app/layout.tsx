@@ -1,8 +1,37 @@
 import type { Metadata } from "next";
+import { Source_Serif_4, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+
+// Three faces, one job each: Source Serif 4 for anything that reads as
+// writing (headings, the article body), Inter for UI chrome (nav, buttons,
+// page furniture), JetBrains Mono for dates and other small, data-like text.
+// Loaded here and exposed as CSS variables on <html>, so globals.css can wire
+// each into a real fallback stack (--font-serif/--font-sans/--font-mono)
+// instead of next/font's own metric-matched one.
+const sourceSerif4 = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-source-serif",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title:
@@ -17,7 +46,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en'>
+    <html
+      lang='en'
+      className={`${sourceSerif4.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
       <head>
         <meta charSet='utf-8' />
         <link

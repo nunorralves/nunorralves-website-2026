@@ -9,7 +9,7 @@ type Props = {
 
 export default function PostError({ error, reset }: Props) {
   return (
-    <div className="mx-auto w-11/12 md:w-2/3 py-16">
+    <div className="container-page py-16">
       <div className="bg-background p-8 rounded-md border border-border">
         <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
         <p className="text-muted-foreground mb-4">{error?.message || "An unexpected error occurred."}</p>

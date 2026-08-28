@@ -26,7 +26,7 @@ export default async function ArchivePage() {
   const postsByMonth = await getPostsGroupedByMonth();
 
   return (
-    <div className='mx-auto w-11/12 md:w-2/3 py-8'>
+    <div className='container-page py-8'>
       <div className='bg-background text-foreground'>
         <h1 className='my-4 text-3xl font-black'>Archive</h1>
         <p className='mb-10 font-normal'>

@@ -1,57 +1,134 @@
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+/* Tailwind v4 only generates utilities (bg-x, text-x, border-x, ...) for a
+   CSS variable declared inside @theme - these tokens used to live only in
+   :root/.light, so bg-background, text-muted-foreground and border-border
+   were valid class names that compiled to no CSS at all. `inline` keeps the
+   generated utilities pointing at the variable itself, rather than baking in
+   whichever value was current when Tailwind ran, which is what lets the
+   .light class below keep swapping them at runtime.
+
+   --background/--foreground/--border exist only so this block has something
+   to point at that isn't itself - `--color-background: var(--color-background)`
+   inside @theme is circular. Everywhere else in the app keeps reading
+   --color-background/--color-foreground/--color-border/--color-secondary/etc
+   directly, unchanged. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--foreground);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--color-secondary);
+}
 
 /* Make dark the default theme */
 :root {
-  --color-background: #1d1e20;
-  --color-foreground: #dadadb;
-  --color-primary: #dadadb;
-  --color-secondary: #9b9c9d;
-  --color-tertiary: #414244;
-  --color-content: #c4c4c5;
-  --color-card: #2e2e33;
-  --color-border: #333333;
-  --color-code-block-bg: #2e2e33;
-  --color-code-inline-bg: #2e2e33;
-  --color-tag: #2e2e33;
+  --background: #17181a;
+  --foreground: #e6e6e7;
+  --border: #2a2c2f;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--foreground);
+  --color-secondary: #9a9c9f;
+  --color-tertiary: var(--border);
+  --color-content: #9a9c9f;
+  --color-card: #1e1f22;
+  --color-border: var(--border);
+  /* Tracks --color-card in dark, --color-border in light - that split is
+     inherited from the previous palette and kept as-is */
+  --color-code-block-bg: var(--color-card);
+  --color-code-inline-bg: var(--color-card);
+  --color-tag: var(--border);
   --color-link: #61afef;
   --color-link-hover: #84c0f5;
-  /* The post age notice. --color-secondary would have done here, but at
-     4.03:1 on a light card it misses AA for text this size, so the notice
-     carries its own foreground. 5.6:1 dark, 6.9:1 light, both on --color-card */
-  --color-notice-fg: #a8a9aa;
 }
 
 .light {
-  --color-background: #f5f5f5;
-  --color-foreground: #1e1e1e;
-  --color-primary: #1e1e1e;
-  --color-secondary: #6c6c6c;
-  --color-tertiary: #d6d6d6;
-  --color-content: #1f1f1f;
+  --background: #fbfaf8;
+  --foreground: #1a1a1a;
+  --border: #e3e0da;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--foreground);
+  --color-secondary: #5c5c5c;
+  --color-tertiary: var(--border);
+  --color-content: #5c5c5c;
   --color-card: #ffffff;
-  --color-border: #eeeeee;
-  /* --color-code-block-bg: #d6d6d6; */
-  --color-code-block-bg: #eeeeee;
-  --color-code-inline-bg: #e5e5e5;
-  --color-tag: #e5e5e5;
+  --color-border: var(--border);
+  --color-code-block-bg: var(--color-border);
+  --color-code-inline-bg: var(--color-border);
+  --color-tag: var(--border);
   --color-link: #0969da;
   --color-link-hover: #0550ae;
-  --color-notice-fg: #5a5a5a;
+}
+
+/* Real fallback stacks, not next/font's own metric-matched one: layout.tsx
+   loads the three faces and exposes them as --font-source-serif/--font-inter
+   /--font-jetbrains-mono, and these wrap each in a stack that still reads
+   right if the Google Fonts request fails. */
+:root {
+  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* Shared reading measure for every page body. mx-auto w-11/12 md:w-2/3 had
+   no ceiling - 95 characters per line at 1440px, 126 at 1920px, well past
+   the 60-75 that is comfortable to read. One place to fix it: container-page
+   for listing and chrome pages, container-prose for the narrower post/project
+   body. */
+@layer components {
+  .container-page,
+  .container-prose {
+    margin-inline: auto;
+    width: 91.6667%;
+  }
+
+  .container-page {
+    max-width: 44rem;
+  }
+
+  .container-prose {
+    max-width: 39.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .container-page,
+    .container-prose {
+      width: 66.6667%;
+    }
+  }
 }
 
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
+  font-family: var(--font-sans);
   --header-height: 60px;
+}
 
-  p,
-  ul li,
-  ol li {
-    color: var(--color-secondary);
-  }
+/* Source Serif 4 is the reading face: every heading, and the article body
+   once it lands inside .prose. Inter (set on body above) stays the default
+   everywhere else - nav, buttons, page furniture - so it only needs
+   overriding where the type is meant to read as writing rather than UI. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-serif);
+}
+
+.prose {
+  font-family: var(--font-serif);
+}
+
+/* Dates read as data, not prose */
+time {
+  font-family: var(--font-mono);
 }
 
 /* PaperMod card styles */
@@ -73,6 +150,7 @@ body {
   .tag {
     background-color: var(--color-tag);
     color: var(--color-primary);
+    font-family: var(--font-mono);
   }
 }
 
@@ -197,19 +275,6 @@ article a:hover,
   color: var(--color-link-hover);
 }
 
-/* Tag pills sit on a card, where --color-tag is identical to --color-card in
-   the dark theme - step up to --color-tertiary so the pill stays visible */
-.projectcard a.tag,
-.project-meta a.tag {
-  color: var(--color-primary);
-  background-color: var(--color-tertiary);
-}
-.projectcard a.tag:hover,
-.project-meta a.tag:hover {
-  color: var(--color-primary);
-  opacity: 0.8;
-}
-
 .project-back {
   color: var(--color-secondary);
 }
@@ -234,7 +299,9 @@ article a:hover,
 /* ===== POST AGE NOTICE ===== */
 /* A quiet aside above the post body, not an alert: card background rather
    than a tint, --color-tertiary rather than the link blue the Callout uses,
-   and one step down in size. */
+   and one step down in size. Its text is unstyled and falls through to
+   body's --color-foreground - the same colour the rest of the post body
+   uses now that prose is no longer forced to --color-secondary. */
 .post-notice {
   display: flex;
   align-items: flex-start;
@@ -246,12 +313,8 @@ article a:hover,
   background-color: var(--color-card);
   font-size: 0.875rem;
   line-height: 1.6;
-  color: var(--color-notice-fg);
 }
 
-/* `body p` above is unlayered and would otherwise repaint the rendered note
-   in --color-secondary, which is the contrast the token exists to avoid */
 .post-notice p {
   margin: 0;
-  color: var(--color-notice-fg);
 }
