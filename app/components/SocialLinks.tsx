@@ -1,4 +1,4 @@
-import { Github, Linkedin, Mail, Twitter } from "lucide-react";
+import { Github, Linkedin, Mail, Rss, Twitter } from "lucide-react";
 import { PROFILES } from "lib/person";
 
 // The home page hand-rolled these four icons as inline SVG, pasted straight
@@ -14,6 +14,11 @@ const LINKS = [
   { href: PROFILES.linkedin, label: "LinkedIn", Icon: Linkedin },
   { href: `mailto:${PROFILES.email}`, label: "Email", Icon: Mail },
   { href: PROFILES.twitter, label: "Twitter", Icon: Twitter },
+  // Last, and deliberately not in PROFILES: the feed is a site resource, not
+  // a profile that identifies me, so it must not leak into the `sameAs` array
+  // that PROFILES feeds. The path is a fixed literal here the same way it is
+  // in the <head> autodiscovery tag.
+  { href: "/feed.xml", label: "RSS feed", Icon: Rss },
 ];
 
 export function SocialLinks({ size = "w-6 h-6" }: { size?: string }) {
