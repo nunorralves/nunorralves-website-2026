@@ -16,6 +16,23 @@ export default function Footer() {
           </p>
           <SocialLinks size='w-5 h-5' />
         </div>
+        {/* Utility links that do not earn a spot in the header row: Archive
+            is the by-date index behind /blog rather than a section of its
+            own, and the feed is for readers who would rather not check back. */}
+        <div className='flex flex-wrap items-center gap-4 text-sm mt-4'>
+          <Link
+            href='/archive'
+            className='text-[var(--color-secondary)] hover:text-foreground transition-colors'
+          >
+            Archive
+          </Link>
+          <Link
+            href='/feed.xml'
+            className='text-[var(--color-secondary)] hover:text-foreground transition-colors'
+          >
+            RSS
+          </Link>
+        </div>
         {/* Its own row rather than hyphenated onto the copyright line: it is a
             sentence, not a credit, and it used to wrap into an uneven mess. */}
         <p className='text-sm mt-4'>

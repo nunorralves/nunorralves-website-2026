@@ -26,7 +26,7 @@ export default async function ProjectsPage() {
         </p>
 
         {projects.length > 0 ? (
-          <div className='space-y-6'>
+          <div>
             {projects.map((project) => (
               <ProjectCard key={project.slug} {...project} />
             ))}

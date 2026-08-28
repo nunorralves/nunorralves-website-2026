@@ -60,10 +60,11 @@ export default function AboutPage() {
             identity.
           </p>
           <p className='font-normal'>
-            The job has not changed much in ten years, only the altitude. Decide
-            what we own. Decide who owns it. Keep the architecture and the org
-            chart from drifting apart, because once they drift, most of what
-            goes wrong afterwards is a symptom of that.
+            The job has not changed much in ten years, only the altitude. It
+            is mostly about ownership: which team is on the hook for which
+            piece, and whether the org chart still matches how the systems
+            actually connect. Most of what I end up fixing turns out to be a
+            symptom of those two drifting apart.
           </p>
         </section>
 

@@ -14,15 +14,16 @@ import ThemeToggle from "./ThemeToggle";
 // position is that it is the workshop and LinkedIn is the CV, and nav order is
 // a claim about priority. Anyone who wants the bio is already one click from
 // it via the intro on the landing page.
+//
+// Archive is not here. It is a utility - the by-date index behind /blog - not
+// a section of its own, and it was the fifth link forcing the burger menu
+// down to lg. It is still linked from /blog and from the footer.
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   // A post lives under /posts, not /blog, but it is the thing /blog lists, so
   // reading one should light up Writing rather than nothing at all. Same for a
   // project detail page, which /projects already covers by prefix.
   { href: "/blog", label: "Writing", also: ["/posts"] },
-  // Next to Writing rather than at the end: it is the same content in a
-  // different shape, so the two writing surfaces belong together.
-  { href: "/archive", label: "Archive" },
   { href: "/projects", label: "Projects" },
   { href: "/about", label: "About" },
 ];
@@ -57,11 +58,12 @@ export default function Header() {
             are one tap each, and burying them costs more than the room they
             take. Only the text links collapse.
 
-            lg, not md: five text links need 679px and the bar only has 608px
-            at 768px, so the row spilled into the gutter through the whole
-            tablet range. Tablets get the menu. */}
-        <div className='flex items-center gap-1 lg:gap-8'>
-          <ul className='hidden lg:flex items-center gap-8'>
+            md, not lg: with Archive gone, four text links fit inside the
+            bar's ~595px at 768px, but only at the tighter gap-4 - gap-8 there
+            still ran the row about 36px past its own box. Desktop has room
+            to spare, so gap-8 comes back at lg. */}
+        <div className='flex items-center gap-1 md:gap-4 lg:gap-8'>
+          <ul className='hidden md:flex items-center gap-4 lg:gap-8'>
             {NAV_LINKS.map(({ href, label, also }) => {
               const active = isActive(pathname, href, also);
               return (
@@ -90,7 +92,7 @@ export default function Header() {
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls='mobile-menu'
-            className='lg:hidden p-2 text-foreground'
+            className='md:hidden p-2 text-foreground'
           >
             {menuOpen ? (
               <X className='w-6 h-6' />
@@ -106,7 +108,7 @@ export default function Header() {
       {menuOpen && (
         <ul
           id='mobile-menu'
-          className='card lg:hidden absolute left-0 right-0 top-full z-50 py-2'
+          className='card md:hidden absolute left-0 right-0 top-full z-50 py-2'
         >
           {NAV_LINKS.map(({ href, label, also }) => {
             const active = isActive(pathname, href, also);

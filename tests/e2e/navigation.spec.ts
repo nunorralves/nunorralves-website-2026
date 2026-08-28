@@ -24,7 +24,9 @@ test.describe('the nav marks the current section', () => {
   const cases: [string, string | null][] = [
     ['/', 'Home'],
     ['/blog', 'Writing'],
-    ['/archive', 'Archive'],
+    // Archive is not in the header nav any more - it is a utility link in
+    // the footer, not a section - so nothing lights up here.
+    ['/archive', null],
     // A post lives under /posts but is what /blog lists, so Writing owns it.
     ['/posts/2026-06-08-pi-extensions', 'Writing'],
     ['/projects', 'Projects'],

@@ -48,7 +48,7 @@ export default async function TagPage({ params }: Props) {
                 <h2 className='text-lg font-semibold mb-4'>
                   Projects ({projects.length})
                 </h2>
-                <div className='space-y-6'>
+                <div>
                   {projects.map((project: ProjectMetadataWithSlug) => (
                     <ProjectCard key={project.slug} {...project} />
                   ))}

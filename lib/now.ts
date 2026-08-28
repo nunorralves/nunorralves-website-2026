@@ -30,9 +30,10 @@ export const CURRENTLY: CurrentlyField[] = [
   },
 ];
 
-// The only line on the page that never goes stale. Copied verbatim from the
-// second paragraph of /about's "What I do now" - keep the two in sync by hand
-// if that wording ever changes.
+// The only line on the page that never goes stale. It started as the second
+// paragraph of /about's "What I do now"; that paragraph has since been
+// reworded so the two pages do not read as a verbatim duplicate, and this is
+// the version that keeps the original, more clipped phrasing.
 export const STANDING_LINE =
   "Decide what we own. Decide who owns it. Keep the architecture and the org chart from drifting apart.";
 
