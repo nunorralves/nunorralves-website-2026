@@ -13,6 +13,8 @@ import {
   FeaturedItem,
 } from "./types";
 import { getProjectDetailHref } from "./links";
+import { groupIntoSeries, Series } from "./series";
+import { getCorrections, Corrections } from "./corrections";
 
 // Resolve a content directory robustly: prefer process.cwd(), fallback to relative path from this file.
 function resolveContentDirectory(name: string): string {
@@ -205,6 +207,25 @@ export async function getPostsGroupedByMonth(): Promise<
   );
 
   return sortedGroupedPosts;
+}
+
+/* =============================== SERIES =============================== */
+
+// Every post grouped into its series, part order preserved. The grouping and
+// validation logic itself lives in lib/series.ts and takes plain data, so it
+// can be unit tested without touching the filesystem.
+export async function getAllSeries(): Promise<Series[]> {
+  const posts = await getAllPostsMetadataWithSlug();
+  return groupIntoSeries(posts);
+}
+
+/* ============================= CORRECTIONS ============================= */
+
+// Posts grouped by what their own frontmatter already says about whether
+// they still hold up. See lib/corrections.ts.
+export async function getAllCorrections(): Promise<Corrections> {
+  const posts = await getAllPostsMetadataWithSlug();
+  return getCorrections(posts);
 }
 
 /* ============================= PROJECTS ============================= */

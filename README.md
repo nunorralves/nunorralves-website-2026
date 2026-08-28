@@ -60,6 +60,9 @@ under the wrong month in the archive while its URL said otherwise, so
 | `featured` | no | Opts the post into the "Selected work" strip on the home page |
 | `outdated` | no | `false` suppresses the age notice, `true` forces it on. Omitted lets the date decide |
 | `outdatedNote` | no | Custom notice text replacing the generic age wording. Inline markdown, links included |
+| `series` | no | Groups this post with others sharing the same value, ordered by `series_part` |
+| `series_part` | required if `series` is set | Order within the series |
+| `series_phase` | no | Free text shown next to the post in its series block, e.g. "Foundation" or "Craft" |
 
 ### The age notice
 
@@ -89,6 +92,45 @@ listing and bare on its own page. `lib/outdated.ts` therefore has no `fs`
 import and only a type import from `lib/types`: `PostCard` renders inside the
 client-side `SearchBar`, so anything it reaches ships to the browser. Same
 constraint as `lib/links.ts`.
+
+### Series
+
+Posts written as a sustained sequence carry `series` and `series_part`, and
+render as one block instead of loose cards - seven posts from one series
+looked like seven unrelated cards otherwise, which reads as repetition rather
+than the sustained work it is. `lib/series.ts` groups posts by `series` and
+orders them by `series_part`; it takes plain post data and does the grouping,
+so it can be unit tested without touching the filesystem, same shape as
+`lib/outdated.ts`.
+
+A series post cannot appear both loose in `/blog`'s chronological list and
+inside its series block: `/blog` excludes any post belonging to a series with
+more than one part from the plain list, and renders the block separately. A
+series with only one part so far has nothing to be grouped with yet, so it
+stays a normal card until a second part gives it a block to join. `/archive`
+is unaffected - it is the full index by date and lists every post regardless.
+
+Order comes entirely from `series_part`, never from `date`, and grouping and
+part numbers are never hand-maintained: a post missing `series_part`, or two
+posts in the same series claiming the same part, fails the build rather than
+rendering a series with a hole or a collision in it.
+
+### Reading time
+
+Shown on `/posts/[slug]` next to the date. `lib/reading-time.ts` counts the
+words in the post body - stripping code fences, images and raw tags first, so
+a post heavy on snippets is not rated as though someone reads code at prose
+speed - and divides by an average reading speed. There is no frontmatter
+field for it: a hand-typed number would drift the moment the post is edited,
+so this is computed from the actual content on every build instead.
+
+### Corrections
+
+`lib/corrections.ts` derives two groups entirely from fields the age notice
+already reads: posts carrying an `outdatedNote` ("no longer holds") and posts
+marked `outdated: false` ("still stands"). Nothing here is a second opinion
+or a hand-maintained list - moving a post between the groups means editing
+the same frontmatter that already drives the age notice, not this file.
 
 ### Project frontmatter
 

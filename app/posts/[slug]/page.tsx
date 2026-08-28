@@ -5,10 +5,11 @@ import remarkGfm from "remark-gfm";
 import { notFound } from "next/navigation";
 // import rehypeMermaid from "rehype-mermaid";
 import { getAllPosts, getPostBySlug } from "lib/helpers";
-import { Calendar, Tag } from "lucide-react";
+import { Calendar, Clock, Tag } from "lucide-react";
 import { Post } from "lib/types";
 import { authorRef } from "lib/person";
 import { getOutdatedNotice } from "lib/outdated";
+import { getReadingTimeMinutes } from "lib/reading-time";
 import { OutdatedNotice } from "app/components/OutdatedNotice";
 import mdxComponents from "mdx-components";
 
@@ -81,6 +82,10 @@ export default async function PostLayout({
   // is for humans who land on an old post, and these posts should keep ranking.
   const outdatedNotice = getOutdatedNotice(post.metadata);
 
+  // Computed from the body on every build rather than authored in
+  // frontmatter, so it can never drift from what the post actually says.
+  const readingTimeMinutes = getReadingTimeMinutes(post.content);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -109,6 +114,11 @@ export default async function PostLayout({
               day: "numeric",
             })}
           </time>
+
+          <span className='flex items-center gap-1'>
+            <Clock className='w-4 h-4' />
+            {readingTimeMinutes} min read
+          </span>
 
           {post.metadata.tags && post.metadata.tags.length > 0 && (
             <div className='flex flex-wrap gap-2'>

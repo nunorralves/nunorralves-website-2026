@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PostCard } from "app/components/PostCard";
+import { SeriesBlock } from "app/components/SeriesBlock";
 import { Pagination } from "app/components/Pagination";
 import { TagCloud } from "app/components/TagCloud";
-import { getAllPostsMetadataWithSlug, getTagCounts } from "lib/helpers";
+import { getAllPostsMetadataWithSlug, getAllSeries, getTagCounts } from "lib/helpers";
+import { multiPartSeries, seriesPostSlugs } from "lib/series";
 
 // Ten, not five. Five split eleven posts across three pages, which is
 // pagination as overhead on a corpus you can read in a sitting.
@@ -29,10 +31,19 @@ interface BlogPageProps {
 // it lived before /blog absorbed it, and the tail of the cloud folds away.
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const { page } = await searchParams;
-  const [posts, tags] = await Promise.all([
+  const [allPosts, allSeries, tags] = await Promise.all([
     getAllPostsMetadataWithSlug(),
+    getAllSeries(),
     getTagCounts(),
   ]);
+
+  // A series post lives inside its series block, below, and nowhere else on
+  // this page - otherwise it would render twice, once loose and once grouped.
+  // A series with a single post so far has nothing to be grouped with yet, so
+  // it stays in this list until a second part gives it a block to join.
+  const blockedSeries = multiPartSeries(allSeries);
+  const blockedSlugs = seriesPostSlugs(blockedSeries);
+  const posts = allPosts.filter((post) => !blockedSlugs.has(post.slug));
 
   const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
   // The page number arrives as a raw query string, so clamp it before slicing
@@ -72,6 +83,15 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <p className='font-normal'>No posts found.</p>
           )}
         </section>
+
+        {blockedSeries.length > 0 && (
+          <section className='mb-12'>
+            <h2 className='text-xl font-semibold mb-4'>Series</h2>
+            {blockedSeries.map((series) => (
+              <SeriesBlock key={series.id} series={series} />
+            ))}
+          </section>
+        )}
 
         {/* The dense by-date list, for when you know the post exists and want
             to find it rather than be sold it. */}

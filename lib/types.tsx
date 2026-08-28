@@ -12,6 +12,14 @@ export interface PostMetadata {
   // Custom notice text replacing the generic age wording. Inline markdown,
   // links included, rendered through the same MDX pipeline as the post body
   outdatedNote?: string;
+  // Groups this post with others sharing the same value into a series. See
+  // lib/series.ts for how a series is assembled and ordered.
+  series?: string;
+  // Order within the series. Required whenever `series` is set.
+  series_part?: number;
+  // Where the series is at when this part was written, e.g. "Foundation" or
+  // "Craft". Free text, shown next to the post inside its series block.
+  series_phase?: string;
 }
 
 export interface PostMetadataWithSlug extends PostMetadata {
