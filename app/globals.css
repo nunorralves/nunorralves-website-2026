@@ -122,14 +122,14 @@ h6 {
   font-family: var(--font-serif);
 }
 
-/* 1.125rem/text-lg, not a bespoke value: it is the same size already used
-   for the home page's lead paragraph and the post dek, so a post body reads
-   as the site's own "prominent paragraph" tier rather than a size invented
-   for this one template that happens to land bigger than every heading
-   outside of it. */
+/* 1rem, matching plain body copy everywhere else on the site (the about
+   page's paragraphs, project descriptions). text-lg (1.125rem) reads as
+   emphasis there - it is the home page's one-line intro and card titles,
+   not the size ordinary paragraphs are set in - so using it here made a
+   post body bigger than every other paragraph on the site. */
 .prose {
   font-family: var(--font-serif);
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.75;
   color: var(--color-foreground);
 }
