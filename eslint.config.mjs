@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Playwright's output. The HTML reporter ships a minified copy of the
+    // trace viewer under playwright-report/trace/, which is thousands of
+    // lint problems in vendored code, and it only appears once a run has
+    // written a trace. Without this, `npm run lint` passes or fails
+    // depending on what the last test run left on disk.
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
