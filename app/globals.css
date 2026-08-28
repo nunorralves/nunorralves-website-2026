@@ -158,6 +158,10 @@ time {
 }
 
 /* Basic code block styling for rehype-pretty-code */
+/* Fixed in rem rather than left to inherit: a code block is data, not the
+   sentence being read, so its size should not float with whatever prose
+   font-size surrounds it - inheriting the 1.16rem body size made a fenced
+   block render nearly as large as the paragraph above it. */
 pre {
   padding: 1rem;
   border-radius: 0.5rem;
@@ -165,11 +169,21 @@ pre {
   margin: 1.5rem 0;
   background-color: var(--color-code-block-bg);
   border: 1px solid var(--code-border);
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 code {
   font-family: "Fira Code", "Consolas", "Monaco", monospace;
   font-size: 0.9em;
+}
+
+/* rehype-pretty-code wraps a block in <pre><code>. The 0.9em above is meant
+   for code sitting inline in a sentence, where it should track that
+   sentence's size - undone here so the code inside a block renders at
+   exactly the size set on `pre`, not 0.9 of it. */
+pre code {
+  font-size: 1em;
 }
 
 /* A code block deliberately breaks the prose column rather than sitting
