@@ -1,7 +1,7 @@
 import type { PostMetadataWithSlug } from "./types";
 
 // Type-only import and no `fs`, deliberately: a series block could end up
-// rendered from the same place PostCard does. Same constraint as
+// rendered from the same place PostRow does. Same constraint as
 // lib/outdated.ts and lib/links.ts.
 
 export interface Series {

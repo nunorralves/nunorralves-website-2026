@@ -3,8 +3,8 @@ import {
   getAllProjectsMetadataWithSlug,
   normalizeTag,
 } from "lib/helpers";
-import { PostMetadataWithSlug, ProjectMetadataWithSlug } from "lib/types";
-import { PostCard } from "app/components/PostCard";
+import { PostListItem, ProjectMetadataWithSlug } from "lib/types";
+import { PostRow } from "app/components/PostRow";
 import { ProjectCard } from "app/components/ProjectCard";
 
 type Props = {
@@ -63,9 +63,9 @@ export default async function TagPage({ params }: Props) {
                     Posts ({posts.length})
                   </h2>
                 )}
-                <div className='space-y-6'>
-                  {posts.map((post: PostMetadataWithSlug) => (
-                    <PostCard key={post.slug} {...post} />
+                <div>
+                  {posts.map((post: PostListItem) => (
+                    <PostRow key={post.slug} {...post} />
                   ))}
                 </div>
               </section>

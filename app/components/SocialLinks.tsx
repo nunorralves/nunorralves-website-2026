@@ -2,7 +2,7 @@ import { Github, Linkedin, Mail, Twitter } from "lucide-react";
 import { PROFILES } from "lib/person";
 
 // The home page hand-rolled these four icons as inline SVG, pasted straight
-// from lucide - the same package Header, PostCard and ProjectCard already
+// from lucide - the same package Header, PostRow and ProjectCard already
 // import from. Shared here so the footer can carry them too: a post reached
 // from search never renders the home page, so without this the profiles are
 // unreachable from most of the site.

@@ -5,6 +5,7 @@ import {
   Post,
   PostMetadata,
   PostMetadataWithSlug,
+  PostListItem,
   Project,
   ProjectMetadata,
   ProjectMetadataWithSlug,
@@ -15,6 +16,7 @@ import {
 import { getProjectDetailHref } from "./links";
 import { groupIntoSeries, Series } from "./series";
 import { getCorrections, Corrections } from "./corrections";
+import { getReadingTimeMinutes } from "./reading-time";
 
 // Resolve a content directory robustly: prefer process.cwd(), fallback to relative path from this file.
 function resolveContentDirectory(name: string): string {
@@ -130,10 +132,12 @@ export async function getAllPosts(): Promise<Post[]> {
   );
 }
 
-// Get all posts metadata only (without content - lighter for listing pages)
-export async function getAllPostsMetadataWithSlug(): Promise<
-  PostMetadataWithSlug[]
-> {
+// Get all posts metadata (without the body itself, but with reading time
+// computed from it) - lighter for listing pages than a full getAllPosts.
+// matter() already parses the file's content alongside its frontmatter, so
+// timing it here costs nothing extra and means no listing page ever reads a
+// post file twice just to know how long it takes to read.
+export async function getAllPostsMetadataWithSlug(): Promise<PostListItem[]> {
   const fileNames = await getPostsFilenames();
 
   const posts = (
@@ -142,16 +146,17 @@ export async function getAllPostsMetadataWithSlug(): Promise<
         const slug = fileName.replace(/\.mdx$/, "");
         const fullPath = await getSlugFullPath(slug);
         const fileContents = fs.readFileSync(fullPath, "utf8");
-        const { data } = matter(fileContents);
+        const { data, content } = matter(fileContents);
 
         return {
           slug,
           ...(data as PostMetadata),
           tags: normalizeTags(data.tags),
+          readingTimeMinutes: getReadingTimeMinutes(content),
         };
       }),
     )
-  ).filter((p) => p && p.published !== false) as PostMetadataWithSlug[];
+  ).filter((p) => p && p.published !== false) as PostListItem[];
 
   return posts.sort((a, b) => (a.date < b.date ? 1 : -1));
 }

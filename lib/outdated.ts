@@ -1,6 +1,6 @@
 import type { PostMetadata } from "./types";
 
-// Type-only import and no `fs`, deliberately: PostCard renders inside the
+// Type-only import and no `fs`, deliberately: PostRow renders inside the
 // client-side SearchBar, so anything it reaches ends up in the browser
 // bundle. Same constraint as lib/links.ts.
 

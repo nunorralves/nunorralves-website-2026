@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { PostCard } from "app/components/PostCard";
+import { PostRow } from "app/components/PostRow";
 import { SeriesBlock } from "app/components/SeriesBlock";
 import { Pagination } from "app/components/Pagination";
 import { TagCloud } from "app/components/TagCloud";
@@ -64,11 +64,20 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           projects alike.
         </p>
 
+        {blockedSeries.length > 0 && (
+          <section className='mb-12'>
+            <h2 className='text-xl font-semibold mb-4'>Series</h2>
+            {blockedSeries.map((series) => (
+              <SeriesBlock key={series.id} series={series} />
+            ))}
+          </section>
+        )}
+
         <section className='mb-12'>
           {paginatedPosts.length > 0 ? (
             <>
               {paginatedPosts.map((post) => (
-                <PostCard key={post.slug} {...post} />
+                <PostRow key={post.slug} {...post} />
               ))}
 
               {totalPages > 1 && (
@@ -83,15 +92,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <p className='font-normal'>No posts found.</p>
           )}
         </section>
-
-        {blockedSeries.length > 0 && (
-          <section className='mb-12'>
-            <h2 className='text-xl font-semibold mb-4'>Series</h2>
-            {blockedSeries.map((series) => (
-              <SeriesBlock key={series.id} series={series} />
-            ))}
-          </section>
-        )}
 
         {/* The dense by-date list, for when you know the post exists and want
             to find it rather than be sold it. */}

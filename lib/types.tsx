@@ -26,6 +26,15 @@ export interface PostMetadataWithSlug extends PostMetadata {
   slug: string;
 }
 
+// A listing post with its reading time attached. Kept separate from
+// PostMetadataWithSlug rather than folding readingTimeMinutes into it,
+// because the base type is also what raw frontmatter-only fixtures (tests,
+// the series/corrections helpers) construct, and none of those have a post
+// body to time.
+export interface PostListItem extends PostMetadataWithSlug {
+  readingTimeMinutes: number;
+}
+
 export interface Post {
   slug: string;
   metadata: PostMetadata;

@@ -219,18 +219,20 @@ article ol ul ul,
 }
 
 /* ===== LINKS ===== */
-/* Disable href behaviour for first page PostCards */
-a.postcard {
+/* Disable href behaviour for typographic post rows (/blog, tag pages, search
+   results): the whole row is one <a>, and without this override the
+   unlayered `article a` rule below would underline it and paint the
+   description and date link-blue along with the title. */
+a.postrow {
   text-decoration: none;
   color: var(--color-secondary);
 }
-a.postcard h2{
+a.postrow h2 {
   text-decoration: none;
-  color: var(--color-primary);
+  color: var(--color-foreground);
 }
-a.postcard:hover {
-  text-decoration: none;
-  color: var(--color-secondary);
+a.postrow:hover h2 {
+  color: var(--color-link);
 }
 
 /* Enabçle href behaviour for article a elements */

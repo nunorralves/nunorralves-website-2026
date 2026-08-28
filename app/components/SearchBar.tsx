@@ -2,9 +2,10 @@
 
 import { searchItems } from "lib/search";
 import { SearchableItem } from "lib/types";
+import { getReadingTimeMinutes } from "lib/reading-time";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { PostCard } from "./PostCard";
+import { PostRow } from "./PostRow";
 import { ProjectCard } from "./ProjectCard";
 
 export default function SearchBar({ items }: { items: SearchableItem[] }) {
@@ -75,7 +76,11 @@ export default function SearchBar({ items }: { items: SearchableItem[] }) {
                 <span className='inline-block mb-2 text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-secondary)]'>
                   Post
                 </span>
-                <PostCard {...result.metadata} slug={result.slug} />
+                <PostRow
+                  {...result.metadata}
+                  slug={result.slug}
+                  readingTimeMinutes={getReadingTimeMinutes(result.content)}
+                />
               </div>
             ),
           )}
