@@ -122,9 +122,14 @@ h6 {
   font-family: var(--font-serif);
 }
 
+/* 1.125rem/text-lg, not a bespoke value: it is the same size already used
+   for the home page's lead paragraph and the post dek, so a post body reads
+   as the site's own "prominent paragraph" tier rather than a size invented
+   for this one template that happens to land bigger than every heading
+   outside of it. */
 .prose {
   font-family: var(--font-serif);
-  font-size: 1.16rem;
+  font-size: 1.125rem;
   line-height: 1.75;
   color: var(--color-foreground);
 }
@@ -160,7 +165,7 @@ time {
 /* Basic code block styling for rehype-pretty-code */
 /* Fixed in rem rather than left to inherit: a code block is data, not the
    sentence being read, so its size should not float with whatever prose
-   font-size surrounds it - inheriting the 1.16rem body size made a fenced
+   font-size surrounds it - inheriting the larger prose size made a fenced
    block render nearly as large as the paragraph above it. */
 pre {
   padding: 1rem;
