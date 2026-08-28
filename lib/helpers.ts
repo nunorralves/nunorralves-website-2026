@@ -17,17 +17,7 @@ import { getProjectDetailHref } from "./links";
 import { groupIntoSeries, Series } from "./series";
 import { getCorrections, Corrections } from "./corrections";
 import { getReadingTimeMinutes } from "./reading-time";
-
-// Resolve a content directory robustly: prefer process.cwd(), fallback to relative path from this file.
-function resolveContentDirectory(name: string): string {
-  const preferred = path.join(process.cwd(), "content", name);
-  if (fs.existsSync(preferred)) return preferred;
-
-  const alt = path.join(__dirname, "..", "content", name);
-  if (fs.existsSync(alt)) return alt;
-
-  return preferred;
-}
+import { resolveContentDirectory } from "./content-path";
 
 const POSTS_DIRECTORY = resolveContentDirectory("posts");
 const PROJECTS_DIRECTORY = resolveContentDirectory("projects");

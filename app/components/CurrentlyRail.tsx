@@ -1,11 +1,14 @@
-import { CURRENTLY, STANDING_LINE, REVIEWED } from "lib/now";
+import { getNow } from "lib/now";
 
 // The lead's right column. Ordered by how durable each field is: the job
 // changes rarely, what I am thinking about drifts over quarters, and what I
-// am building is the one that turns over fastest. See lib/now.ts for why
-// this is the only hand-typed data on the page and how it is kept honest.
+// am building is the one that turns over fastest. The fields themselves live
+// in content/now/currently.md; see lib/now.ts for why this is the only
+// hand-typed content on the page and how it is kept honest.
 export function CurrentlyRail() {
-  const reviewedLabel = new Date(REVIEWED).toLocaleDateString("en-US", {
+  const { fields, standingLine, reviewed } = getNow();
+
+  const reviewedLabel = new Date(reviewed).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
   });
@@ -16,7 +19,7 @@ export function CurrentlyRail() {
         Currently
       </h2>
       <dl className='text-sm'>
-        {CURRENTLY.map((field) => (
+        {fields.map((field) => (
           <div key={field.label} className='mt-4 first:mt-0'>
             <dt className='font-mono text-[0.65rem] uppercase tracking-wide text-muted-foreground'>
               {field.label}
@@ -31,7 +34,7 @@ export function CurrentlyRail() {
         Reviewed {reviewedLabel}
       </p>
       <p className='mt-5 pt-4 border-t border-[var(--color-border)] font-serif italic text-[0.95rem] leading-snug text-[var(--color-secondary)]'>
-        {STANDING_LINE}
+        {standingLine}
       </p>
     </aside>
   );

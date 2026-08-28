@@ -17,6 +17,13 @@ import { isOutdated, OUTDATED_LISTING_MARKER } from "../lib/outdated";
 // reader has to go to /blog for the rest.
 const WRITING_LIST_LIMIT = 5;
 
+// The home page is a map, /blog is the index. Uncapped, the Pi series alone
+// puts seven parts in the left column against five posts in the right, and a
+// twelve part series would take the page over. Both caps link the remainder
+// to /blog, where every series still renders in full.
+const HOME_SERIES_LIMIT = 2;
+const HOME_SERIES_PARTS = 3;
+
 export default async function Home() {
   const [featured, posts, series, corrections] = await Promise.all([
     getFeaturedItems(3),
@@ -28,7 +35,12 @@ export default async function Home() {
   // A series post lives inside its block, below, and nowhere else on this
   // page - same rule /blog follows, so a part never renders twice.
   const blockedSeries = multiPartSeries(series);
+  // Every series post is excluded from "everything else", including the ones
+  // whose block the cap below leaves off this page. A part that surfaced
+  // loose because its series did not fit is the exact thing the block exists
+  // to prevent.
   const blockedSlugs = seriesPostSlugs(blockedSeries);
+  const shownSeries = blockedSeries.slice(0, HOME_SERIES_LIMIT);
   const everythingElse = posts
     .filter((post) => !blockedSlugs.has(post.slug))
     .slice(0, WRITING_LIST_LIMIT);
@@ -87,10 +99,15 @@ export default async function Home() {
                 <WorkEntry key={`${item.kind}-${item.slug}`} {...item} />
               ))}
             </div>
-
-            <CorrectionsStrip {...corrections} />
           </section>
         )}
+
+        {/* Its own block, not part of Selected work. Corrections is about
+            posts and has nothing to do with `featured: true`, so nesting it
+            in that section meant unsetting the last featured item would have
+            silently taken this with it. It renders unwrapped because it
+            returns null when there is nothing to correct. */}
+        <CorrectionsStrip {...corrections} />
 
         {(blockedSeries.length > 0 || everythingElse.length > 0) && (
           <section>
@@ -105,8 +122,12 @@ export default async function Home() {
             </div>
             <div className='grid md:grid-cols-2 gap-x-10 gap-y-8 items-start'>
               <div>
-                {blockedSeries.map((s) => (
-                  <SeriesBlock key={s.id} series={s} />
+                {shownSeries.map((s) => (
+                  <SeriesBlock
+                    key={s.id}
+                    series={s}
+                    maxParts={HOME_SERIES_PARTS}
+                  />
                 ))}
               </div>
               <div>

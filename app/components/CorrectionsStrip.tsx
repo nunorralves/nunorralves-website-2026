@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { Corrections } from "lib/corrections";
 
-// Folded into the bottom of Selected work rather than given its own section:
-// this is a practice, not a confession, and a whole section would overstate
-// it. Both lines build themselves from lib/corrections.ts, so a post can only
-// land here by frontmatter saying so, never by anyone editing this file.
+// A compact strip between Selected work and Writing rather than a section of
+// its own: this is a practice, not a confession, and a full section would
+// overstate it. It owns its bottom margin so the home page can drop it in
+// unwrapped and lose the spacing too when there is nothing to show. Both
+// lines build themselves from lib/corrections.ts, so a post can only land
+// here by frontmatter saying so, never by anyone editing this file.
 export function CorrectionsStrip({ noLongerHolds, stillStands }: Corrections) {
   if (noLongerHolds.length === 0 && stillStands.length === 0) return null;
 
   return (
-    <div className='mt-8 card p-5'>
+    <div className='mb-12 card p-5'>
       <h3 className='font-serif text-lg font-semibold mb-2 text-foreground'>
         Corrections
       </h3>

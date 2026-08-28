@@ -70,6 +70,18 @@ export default function RootLayout({
           href='/favicons/apple-touch-icon.png'
         />
         <link rel='manifest' href='/favicons/site.webmanifest' />
+        {/* Feed autodiscovery. This is a raw tag rather than
+            `metadata.alternates` because page level metadata replaces the
+            root `alternates` object wholesale, and /blog, /about and the
+            rest already set their own canonical. Via metadata the feed link
+            would vanish from exactly the pages a reader is most likely to
+            paste into their feed reader. */}
+        <link
+          rel='alternate'
+          type='application/rss+xml'
+          title='nunorralves.pt'
+          href='/feed.xml'
+        />
         <link
           rel='mask-icon'
           href='/favicons/safari-pinned-tab.svg'
