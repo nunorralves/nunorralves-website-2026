@@ -59,7 +59,7 @@ export default async function Home() {
                 tenure buried the actual point of the page below the fold, and
                 the title already lives on /about anyway. */}
             <p className='mb-6 text-lg'>
-              This site is the workshop, not the CV. I build agent systems, applications and
+              This site is the workshop, not the CV. I build agent systems, apps and
               small tools here, and write about what actually breaks when you
               do.
             </p>
