@@ -23,7 +23,7 @@ export const PROFILES = {
   github: "https://github.com/nunorralves",
   linkedin: "https://www.linkedin.com/in/nralves/",
   twitter: "https://twitter.com/nunorralves",
-  email: "nunorralves@gmail.com",
+  email: "nuno@nunorralves.pt",
 } as const;
 
 // Enough of the Person to be valid on its own, plus the shared `@id` that ties
