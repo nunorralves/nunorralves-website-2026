@@ -15,6 +15,7 @@ import { windowFor } from '../../lib/analytics/sync';
 import { missingVercelEnv } from '../../lib/analytics/vercel-api';
 import { buildConclusion } from '../../lib/analytics/summary';
 import {
+  formatCoverage,
   formatDelta,
   formatDeltaPoints,
   formatDuration,
@@ -470,6 +471,21 @@ test('analytics logic: a delta needs something to compare against', () => {
 test('analytics logic: rate deltas are stated in percentage points', () => {
   expect(formatDeltaPoints(0.46, 0.49)).toBe('▼ 3.0pp');
   expect(formatDeltaPoints(0.46, null)).toBeNull();
+});
+
+// The year on both ends, including when they match. On All time the first date
+// is the age of the mirror, and that is exactly the figure a bare "31 Jul"
+// refuses to give.
+test('analytics logic: the coverage line dates both of its ends', () => {
+  expect(formatCoverage('2026-07-31', '2026-08-30')).toBe(
+    'data 31 Jul 2026 to 30 Aug 2026',
+  );
+  expect(formatCoverage('2025-11-02', '2026-08-30')).toBe(
+    'data 2 Nov 2025 to 30 Aug 2026',
+  );
+  expect(formatCoverage('2026-08-30', '2026-08-30')).toBe('data 30 Aug 2026');
+  expect(formatCoverage(null, '2026-08-30')).toBe('no data stored');
+  expect(formatCoverage('2026-08-30', null)).toBe('no data stored');
 });
 
 // Both, or you fix one variable, redeploy, and get told about the other.

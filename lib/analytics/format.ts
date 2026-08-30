@@ -140,9 +140,11 @@ export function formatCoverage(
 
   if (first === last) return `data ${format(to, "d MMM yyyy")}`;
 
-  // The year is stated once when both ends share it, and twice when they do
-  // not, which is the difference between "Feb to Aug 2026" and a range that
-  // quietly crosses a new year without saying so.
-  const sameYear = from.getUTCFullYear() === to.getUTCFullYear();
-  return `data ${format(from, sameYear ? "d MMM" : "d MMM yyyy")} to ${format(to, "d MMM yyyy")}`;
+  // Both years, always, even when they are the same one. Dropping the first is
+  // the tidier typography and it costs the reader the one thing this line is
+  // for: on All time a bare "31 Jul" carries no clue whether the mirror starts
+  // this year or three back, and the reader has to reach the far end of the
+  // sentence and assume the years match to find out. Four characters is a
+  // cheap price for a line nobody has to reason about.
+  return `data ${format(from, "d MMM yyyy")} to ${format(to, "d MMM yyyy")}`;
 }
