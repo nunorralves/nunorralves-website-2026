@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { VERCEL_RETENTION_DAYS } from "lib/analytics/config";
 import { rollupBeaconEvents } from "lib/analytics/rollup";
 import { syncFromVercel } from "lib/analytics/sync";
 
@@ -18,6 +19,13 @@ export const maxDuration = 60;
  * cron invocations, and this refuses anything else, because the path itself is
  * public: the repository is open source, so the URL is known to everyone and
  * is not, and must not be, the thing keeping this closed.
+ *
+ * `?days=N` widens the window to N days for every grain, which is what
+ * scripts/backfill-analytics.mjs uses to pull everything Vercel still holds.
+ * Vercel's cron never sends it, so the nightly behaviour is untouched. It sits
+ * behind the same bearer token as everything else here: a stranger being able
+ * to make the server do 24 extra API calls is a small thing, but it is not
+ * nothing, and there is no reason to give it away.
  */
 export async function GET(request: Request) {
   const expected = process.env.CRON_SECRET;
@@ -32,8 +40,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Clamped rather than trusted. Past the retention line Vercel has nothing to
+  // give, so a larger number would only widen the request for no extra rows,
+  // and a zero or negative one would ask for an empty window.
+  const requested = new URL(request.url).searchParams.get("days");
+  const parsed = requested === null ? undefined : Number(requested);
+  if (parsed !== undefined && !Number.isFinite(parsed)) {
+    return NextResponse.json(
+      { error: "days must be a number" },
+      { status: 400 },
+    );
+  }
+  const days =
+    parsed === undefined
+      ? undefined
+      : Math.min(VERCEL_RETENTION_DAYS, Math.max(1, Math.round(parsed)));
+
   try {
-    const sync = await syncFromVercel();
+    const sync = await syncFromVercel(new Date(), { days });
     const rollup = await rollupBeaconEvents();
 
     // A partial sync still moves history forward, so errors are reported

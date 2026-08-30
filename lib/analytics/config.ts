@@ -50,6 +50,12 @@ export type Grain = (typeof GRAINS)[number];
 // this is the number to watch once the site grows.
 export const BREAKDOWN_LIMIT = 100;
 
+// How much history Vercel Web Analytics will still answer questions about on
+// a Hobby plan. This is the number the whole project exists because of: past
+// this line the data is gone from Vercel for good, so it is also the widest
+// window a first run or a backfill can possibly recover.
+export const VERCEL_RETENTION_DAYS = 30;
+
 // How far back each nightly run re-reads. Vercel's numbers can still move
 // after the fact, and a cron that fails or is skipped would otherwise leave a
 // permanent hole, because Hobby only lets us look back 30 days. Re-pulling a

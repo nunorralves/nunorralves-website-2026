@@ -8,6 +8,7 @@
     "start": "next start",
     "analytics:backup": "node --env-file=.env.local scripts/backup-analytics.mjs",
     "analytics:restore": "node --env-file=.env.local scripts/backup-analytics.mjs --restore",
+    "analytics:backfill": "node --env-file=.env.local scripts/backfill-analytics.mjs",
     "lint": "eslint",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
