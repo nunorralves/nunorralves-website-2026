@@ -5,6 +5,7 @@ import { SearchableItem } from "lib/types";
 import { getReadingTimeMinutes } from "lib/reading-time";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { trackSearch } from "./Beacon";
 import { PostRow } from "./PostRow";
 import { ProjectCard } from "./ProjectCard";
 
@@ -32,6 +33,16 @@ export default function SearchBar({ items }: { items: SearchableItem[] }) {
         : searchItems(items, activeQuery).map((result) => result.item),
     [items, activeQuery],
   );
+
+  // Report the settled query, not every keystroke: the debounce above has
+  // already waited for the reader to stop typing, so this fires once per
+  // search rather than once per character. The result count travels with it
+  // because a query that found nothing is the useful one - it names something
+  // somebody wanted and the site does not have.
+  useEffect(() => {
+    if (activeQuery === "") return;
+    trackSearch(activeQuery, searchResults.length);
+  }, [activeQuery, searchResults.length]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);

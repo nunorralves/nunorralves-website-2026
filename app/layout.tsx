@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Source_Serif_4, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
+import Beacon from "./components/Beacon";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 
@@ -96,6 +97,11 @@ export default function RootLayout({
         <main className='flex-1'>{children}</main>
         <Footer />
         <Analytics />
+        {/* Vercel's script counts page views; this one collects what
+            Vercel cannot answer on a Hobby plan - dwell, scroll depth,
+            outbound clicks and site searches - and writes it somewhere
+            that does not forget after 30 days. */}
+        <Beacon />
       </body>
     </html>
   );
