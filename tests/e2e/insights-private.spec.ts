@@ -1,0 +1,80 @@
+import { test, expect } from '@playwright/test';
+
+// The one property that matters more than anything the dashboard renders: a
+// visitor with no cookie must never see a number. These run against the real
+// build, with no ANALYTICS_PASSWORD set in the environment, which is the
+// harshest version of the question - a misconfigured deployment has to be shut
+// rather than open.
+
+test('insights: /insights is not reachable without a session', async ({ page }) => {
+  const response = await page.goto('/insights');
+
+  // A redirect to the login page is the expected answer. 401 or 404 would also
+  // be acceptable outcomes, and are allowed here so the assertion is about
+  // "not the dashboard" rather than about one implementation of privacy.
+  const status = response?.status() ?? 0;
+  if (status === 200) {
+    await expect(page).toHaveURL(/\/insights\/login/);
+  } else {
+    expect([401, 403, 404]).toContain(status);
+  }
+
+  // Whatever the mechanism, none of the dashboard's own furniture may appear.
+  await expect(page.getByRole('heading', { name: 'Insights', level: 1 })).toHaveCount(0);
+  await expect(page.getByText('Where they came from')).toHaveCount(0);
+});
+
+// A deep link is the interesting case: the redirect above could easily be
+// written to only catch the bare path.
+test('insights: a deep link is not reachable either', async ({ page }) => {
+  await page.goto('/insights?range=1y&dim=country');
+  await expect(page).toHaveURL(/\/insights\/login/);
+});
+
+test('insights: a forged cookie does not open the route', async ({ page, context }) => {
+  // A plausible looking value with an expiry far in the future and a signature
+  // that was never signed. Without the HMAC check this walks straight in.
+  await context.addCookies([
+    {
+      name: 'insights_session',
+      value: `${Math.floor(Date.now() / 1000) + 86_400}.${'a'.repeat(64)}`,
+      url: 'http://localhost:3000',
+    },
+  ]);
+
+  await page.goto('/insights');
+  await expect(page).toHaveURL(/\/insights\/login/);
+});
+
+test('insights: the login page is served and carries noindex', async ({ page }) => {
+  const response = await page.goto('/insights/login');
+
+  expect(response?.status()).toBe(200);
+  expect(response?.headers()['x-robots-tag']).toBe('noindex, nofollow');
+  await expect(page.getByRole('heading', { name: 'Private' })).toBeVisible();
+  await expect(page.locator('input[name="password"]')).toBeVisible();
+});
+
+test('insights: a wrong password is refused', async ({ page }) => {
+  await page.goto('/insights/login');
+  await page.locator('input[name="password"]').fill('not-the-password');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await expect(page).toHaveURL(/\/insights\/login\?error=/);
+  // By text rather than by role: Next renders its own aria-live route
+  // announcer with role="alert" on every navigation, so the role alone
+  // matches two elements.
+  await expect(page.getByText('That is not the password.')).toBeVisible();
+});
+
+test('insights: robots.txt disallows it', async ({ request }) => {
+  const res = await request.get('/robots.txt');
+  expect(res.status()).toBe(200);
+  expect(await res.text()).toContain('Disallow: /insights');
+});
+
+test('insights: the sitemap does not mention it', async ({ request }) => {
+  const res = await request.get('/sitemap.xml');
+  expect(res.status()).toBe(200);
+  expect(await res.text()).not.toContain('/insights');
+});
