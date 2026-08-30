@@ -38,9 +38,21 @@ const TABLES = {
   // than one that does not.
 };
 
-const url = process.env.DATABASE_URL;
+// The same rule lib/analytics/db.ts uses, restated because a plain .mjs cannot
+// import the TypeScript that owns it: Vercel's Neon integration prefixes the
+// variables it manages, so production has WEBSITE_DATABASE_URL rather than
+// DATABASE_URL. Exact name first, then anything ending in _DATABASE_URL.
+function databaseUrl() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const prefixed = Object.keys(process.env)
+    .filter((key) => key.endsWith("_DATABASE_URL") && process.env[key])
+    .sort();
+  return prefixed.length > 0 ? process.env[prefixed[0]] : undefined;
+}
+
+const url = databaseUrl();
 if (!url) {
-  console.error("DATABASE_URL is not set. Try: node --env-file=.env.local scripts/backup-analytics.mjs");
+  console.error("No database connection string found. Try: node --env-file=.env.local scripts/backup-analytics.mjs");
   process.exit(1);
 }
 

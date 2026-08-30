@@ -9,6 +9,7 @@ import {
   toIsoDate,
 } from '../../lib/analytics/ranges';
 import { GRAINS, VERCEL_RETENTION_DAYS } from '../../lib/analytics/config';
+import { databaseUrl } from '../../lib/analytics/db';
 import { toBucketString } from '../../lib/analytics/queries';
 import { windowFor } from '../../lib/analytics/sync';
 import { buildConclusion } from '../../lib/analytics/summary';
@@ -318,6 +319,75 @@ test('analytics logic: a date column survives whatever shape it arrives in', () 
   expect(toBucketString(new Date(2026, 0, 1))).toBe('2026-01-01');
   // A timestamptz string, trimmed to its day.
   expect(toBucketString('2026-08-30T00:00:00.000Z')).toBe('2026-08-30');
+});
+
+// ---------------------------------------------------------------------------
+// Finding the connection string
+//
+// Vercel's Neon integration prefixes the variables it manages, so production
+// had WEBSITE_DATABASE_URL and the cron reported "DATABASE_URL is not set"
+// while sitting next to a working connection string. No database is touched
+// by any of this: the resolver only reads the environment.
+// ---------------------------------------------------------------------------
+
+function withEnv(vars: Record<string, string | undefined>, run: () => void) {
+  const saved = new Map<string, string | undefined>();
+  for (const key of Object.keys(vars)) saved.set(key, process.env[key]);
+  try {
+    for (const [key, value] of Object.entries(vars)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    run();
+  } finally {
+    for (const [key, value] of saved) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+test('analytics logic: an exact DATABASE_URL wins', () => {
+  withEnv({ DATABASE_URL: 'postgres://exact', WEBSITE_DATABASE_URL: 'postgres://prefixed' }, () => {
+    expect(databaseUrl()).toBe('postgres://exact');
+  });
+});
+
+test('analytics logic: a prefixed variable is used when there is no exact one', () => {
+  withEnv({ DATABASE_URL: undefined, WEBSITE_DATABASE_URL: 'postgres://prefixed' }, () => {
+    expect(databaseUrl()).toBe('postgres://prefixed');
+  });
+});
+
+// Neon sets an unpooled variant alongside the pooled one. The HTTP driver
+// wants the pooled endpoint, and _DATABASE_URL_UNPOOLED does not end in
+// _DATABASE_URL, so it is never picked up.
+test('analytics logic: the unpooled variant is not mistaken for the pooled one', () => {
+  withEnv({
+    DATABASE_URL: undefined,
+    WEBSITE_DATABASE_URL: undefined,
+    WEBSITE_DATABASE_URL_UNPOOLED: 'postgres://unpooled',
+  }, () => {
+    expect(databaseUrl()).toBeUndefined();
+  });
+});
+
+// Deterministic rather than whatever order the environment enumerates in, so
+// a project with two attached stores resolves the same way on every cold start.
+test('analytics logic: two attached stores resolve the same way every time', () => {
+  withEnv({
+    DATABASE_URL: undefined,
+    ZEBRA_DATABASE_URL: 'postgres://zebra',
+    ALPHA_DATABASE_URL: 'postgres://alpha',
+  }, () => {
+    expect(databaseUrl()).toBe('postgres://alpha');
+  });
+});
+
+test('analytics logic: nothing set means nothing found, not a crash', () => {
+  withEnv({ DATABASE_URL: undefined, WEBSITE_DATABASE_URL: undefined }, () => {
+    expect(databaseUrl()).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

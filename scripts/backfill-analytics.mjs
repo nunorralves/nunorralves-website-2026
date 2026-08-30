@@ -44,17 +44,30 @@ const baseUrl = (flag("url", "http://localhost:3000") ?? "").replace(/\/$/, "");
 const days = Number(flag("days", String(VERCEL_RETENTION_DAYS)));
 const schemaOnly = process.argv.includes("--schema-only");
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
+// The same rule lib/analytics/db.ts uses, restated because a plain .mjs cannot
+// import the TypeScript that owns it: Vercel's Neon integration prefixes the
+// variables it manages, so production has WEBSITE_DATABASE_URL rather than
+// DATABASE_URL. Exact name first, then anything ending in _DATABASE_URL.
+function databaseUrl() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const prefixed = Object.keys(process.env)
+    .filter((key) => key.endsWith("_DATABASE_URL") && process.env[key])
+    .sort();
+  return prefixed.length > 0 ? process.env[prefixed[0]] : undefined;
+}
+
+const connection = databaseUrl();
+if (!connection) {
   console.error(
-    "DATABASE_URL is not set.\n" +
+    "No database connection string found.\n" +
+      "Looked for DATABASE_URL and for anything ending in _DATABASE_URL.\n" +
       "Paste the Neon connection string into .env.local, then run:\n" +
       "  npm run analytics:backfill",
   );
   process.exit(1);
 }
 
-const sql = neon(databaseUrl);
+const sql = neon(connection);
 
 await applySchema();
 if (!schemaOnly) await backfill();
