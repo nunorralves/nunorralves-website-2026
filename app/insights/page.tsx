@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import AreaChart from "app/components/insights/AreaChart";
 import DataTable, { type TableRow } from "app/components/insights/DataTable";
 import DimensionNav, {
@@ -99,7 +100,13 @@ function parseView(value: string | undefined): ViewKey {
 // put them fifteen hundred pixels down, which is the same thing as burying
 // them behind one. The tail is not information: anything below the top 25 here
 // has a single digit against it.
-const TABLE_ROWS = 25;
+const TABLE_ROWS = 15;
+
+// What "expanded" means. Still a ceiling rather than everything, because the
+// point of the fold is that the tail is single digit rows, and a dimension
+// with a genuinely unbounded tail (referrers, once anything gets shared
+// widely) should not be able to render a thousand rows into the page.
+const TABLE_ROWS_EXPANDED = 200;
 
 // The three pinned panels are a standing summary rather than a list to work
 // through, and they sit side by side, so they get a shorter tail. They are fed
@@ -121,6 +128,7 @@ type SearchParams = Promise<{
   dim?: string;
   from?: string;
   to?: string;
+  rows?: string;
 }>;
 
 export default async function InsightsPage({
@@ -130,6 +138,13 @@ export default async function InsightsPage({
 }) {
   const params = await searchParams;
   const view = parseView(params.dim);
+
+  // The fold is a link, not a toggle, for the same reason the range and the
+  // dimension are links: every piece of state on this page lives in the URL,
+  // which makes any view of it bookmarkable and means the page ships no client
+  // JavaScript at all. It also means the tail is not fetched or sent until
+  // somebody asks for it.
+  const expanded = params.rows === "all";
 
   // A custom pair outranks the preset when both are present and the pair
   // parses. parseCustomRange returns null on anything mangled, so a hand
@@ -163,7 +178,7 @@ export default async function InsightsPage({
 
   let data: Awaited<ReturnType<typeof load>>;
   try {
-    data = await load(range, view, now);
+    data = await load(range, view, now, expanded);
   } catch (error) {
     // A dashboard that throws a stack trace at me is less useful than one that
     // says which query died. This is the only reader, so the message is the
@@ -330,6 +345,23 @@ export default async function InsightsPage({
             empty={table.empty}
             monoLabels={table.mono}
           />
+
+          {/* The fold. A link rather than a toggle: everything else on this
+              page puts its state in the URL, and this way the tail is not
+              queried or sent until it is asked for. */}
+          {expanded ? (
+            table.rows.length > TABLE_ROWS ? (
+              <Fold href={`/insights?${rangeQuery}&dim=${view}`}>
+                Show fewer
+              </Fold>
+            ) : null
+          ) : (table.total ?? Infinity) > table.rows.length ? (
+            <Fold href={`/insights?${rangeQuery}&dim=${view}&rows=all`}>
+              {table.total === undefined
+                ? "Show the rest"
+                : `Show all ${formatCount(table.total)}`}
+            </Fold>
+          ) : null}
         </>
       }
       pinned={[
@@ -414,7 +446,13 @@ export default async function InsightsPage({
 // Data
 // ---------------------------------------------------------------------------
 
-async function load(range: DateRange, view: ViewKey, now: Date) {
+async function load(
+  range: DateRange,
+  view: ViewKey,
+  now: Date,
+  expanded: boolean,
+) {
+  const limit = expanded ? TABLE_ROWS_EXPANDED : TABLE_ROWS;
   const grain = pickGrain(range);
   const exact = exactVisitorBucket(range);
 
@@ -460,15 +498,15 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
     queries.fetchDimensionCounts(grain, range),
     // Pages are fetched whatever the selected view: the conclusion sentence
     // needs the top one, and the pages table is the default view anyway.
-    queries.fetchBreakdown("requestPath", grain, range, TABLE_ROWS),
-    queries.fetchBreakdown("referrerHostname", grain, range, TABLE_ROWS),
+    queries.fetchBreakdown("requestPath", grain, range, limit),
+    queries.fetchBreakdown("referrerHostname", grain, range, limit),
     queries.fetchEngagement(range),
     queries.fetchEngagement(previousRange),
     queries.fetchPageEngagement(range),
     queries.fetchIntentTotals(range),
     queries.fetchIntentTotals(previousRange),
-    queries.fetchIntent(range, "outbound", TABLE_ROWS),
-    queries.fetchIntent(range, "search_zero", TABLE_ROWS),
+    queries.fetchIntent(range, "outbound", limit),
+    queries.fetchIntent(range, "search_zero", limit),
     queries.fetchLastSynced(),
     queries.fetchPageBounce(range, now),
   ]);
@@ -480,13 +518,13 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
       : view === "referrerHostname"
         ? referrers
         : (DIMENSIONS as readonly string[]).includes(view)
-          ? await queries.fetchBreakdown(view as Dimension, grain, range, TABLE_ROWS)
+          ? await queries.fetchBreakdown(view as Dimension, grain, range, limit)
           : [];
 
   const searches = (DIMENSIONS as readonly string[]).includes(view)
     ? []
     : view === "search"
-      ? await queries.fetchIntent(range, "search", TABLE_ROWS)
+      ? await queries.fetchIntent(range, "search", limit)
       : [];
 
   // Only compare against a window our history actually covers. Vercel held a
@@ -528,6 +566,7 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
       // truncated table that did not say so would look like it disagreed
       // with the link that opened it.
       total: counts[view],
+      limit,
     }),
   };
 }
@@ -539,6 +578,8 @@ type TableSpec = {
   rows: TableRow[];
   empty: string;
   mono: boolean;
+  /** How many rows exist in total, when that is knowable. */
+  total?: number;
 };
 
 // Says so when the table is showing only the head of the list. A truncated
@@ -561,6 +602,7 @@ function buildTable(
     searches: queries.IntentRow[];
     zeroSearches: queries.IntentRow[];
     total?: number;
+    limit: number;
   },
 ): TableSpec {
   if (view === "requestPath") {
@@ -573,6 +615,7 @@ function buildTable(
     const share = shares(data.pages.map((row) => row.pageviews));
     return {
       title: "Pages",
+      total: data.total,
       note: noteWithTotal(
         "Vercel counts and beacon engagement",
         data.pages.length,
@@ -605,10 +648,11 @@ function buildTable(
     // Fetched wider than it is shown, because the pages table above looks up
     // engagement by path and its top 25 by Vercel views is not the same set as
     // the top 25 by beacon views. Only the display is trimmed.
-    const shown = data.pageEngagement.slice(0, TABLE_ROWS);
+    const shown = data.pageEngagement.slice(0, data.limit);
     const share = shares(shown.map((row) => row.views));
     return {
       title: "Engagement",
+      total: data.pageEngagement.length,
       note: noteWithTotal("beacon only", shown.length, data.pageEngagement.length),
       headings: ["Page", "Views", "Median read", "Scroll"],
       mono: true,
@@ -629,6 +673,7 @@ function buildTable(
     const share = shares(data.outbound.map((row) => row.count));
     return {
       title: "Outbound clicks",
+      total: data.outbound.length === data.limit ? undefined : data.outbound.length,
       note: "beacon only",
       headings: ["Destination", "Clicks"],
       mono: true,
@@ -652,6 +697,7 @@ function buildTable(
     const share = shares(rows.map((row) => row.count));
     return {
       title: "Site searches",
+      total: rows.length === data.limit ? undefined : rows.length,
       note: "beacon only",
       headings: ["Query", "Times", "Found"],
       mono: false,
@@ -667,6 +713,7 @@ function buildTable(
   const share = shares(data.selected.map((row) => row.pageviews));
   return {
     title: DIMENSION_LABELS[view as Dimension],
+    total: data.total,
     note: noteWithTotal("Vercel mirror", data.selected.length, data.total),
     headings: [DIMENSION_LABELS[view as Dimension], "Views", "Visitors"],
     mono: view === "referrerHostname" || view === "route",
@@ -702,6 +749,23 @@ function emptyNav(): NavGroup[] {
       })),
     },
   ];
+}
+
+function Fold({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className='mt-3 inline-block font-mono text-[0.7rem] text-[var(--color-secondary)] transition-colors hover:text-[var(--color-link)]'
+    >
+      {children}
+    </Link>
+  );
 }
 
 function Notice({ title, body }: { title: string; body: string }) {
