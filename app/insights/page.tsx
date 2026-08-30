@@ -200,7 +200,7 @@ export default async function InsightsPage({
     {
       label: "Visitors",
       value: formatCount(exactVisitors ?? totals.visitors),
-      delta: formatDelta(totals.visitors, previous.visitors),
+      delta: formatDelta(totals.visitors, previous?.visitors ?? null),
       // The trap this marker exists for. `visitors` is a distinct count, so it
       // does not add: a reader who came back on five days is one visitor and
       // five daily rows. Only a range that is exactly one stored bucket can be
@@ -215,7 +215,7 @@ export default async function InsightsPage({
     {
       label: "Page views",
       value: formatCount(totals.pageviews),
-      delta: formatDelta(totals.pageviews, previous.pageviews),
+      delta: formatDelta(totals.pageviews, previous?.pageviews ?? null),
     },
     {
       label: "Bounce",
@@ -240,7 +240,7 @@ export default async function InsightsPage({
   const conclusion = buildConclusion({
     range,
     pageviews: totals.pageviews,
-    previousPageviews: previous.pageviews,
+    previousPageviews: previous?.pageviews ?? null,
     topPage: pages[0]
       ? { value: pages[0].value, pageviews: pages[0].pageviews }
       : null,
@@ -413,7 +413,8 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
   const [
     series,
     totals,
-    previous,
+    previousTotals,
+    earliestBucket,
     exactVisitors,
     counts,
     pages,
@@ -431,6 +432,7 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
     queries.fetchSeries(grain, range),
     queries.fetchTotals(grain, range),
     queries.fetchTotals(grain, previousRange),
+    queries.fetchEarliestBucket(grain),
     exact
       ? queries.fetchExactVisitors(exact.grain, exact.bucket)
       : Promise.resolve(null),
@@ -465,6 +467,17 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
     : view === "search"
       ? await queries.fetchIntent(range, "search", 25)
       : [];
+
+  // Only compare against a window our history actually covers. Vercel held a
+  // month when this mirror started, so the window before a 30 day range is
+  // covered by a day or two of it, and a delta against that says "up 9,213%"
+  // about a perfectly ordinary month. Null here means the strip shows no delta
+  // and the conclusion falls through to something it can stand behind.
+  const previous =
+    earliestBucket !== null &&
+    toIsoDate(previousRange.from) >= earliestBucket
+      ? previousTotals
+      : null;
 
   return {
     series,

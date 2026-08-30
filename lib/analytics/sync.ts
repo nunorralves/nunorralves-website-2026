@@ -22,21 +22,38 @@ import { fetchAggregate, type AggregateRow } from "./vercel-api";
  * `days` overrides all of that with a flat window. Two callers want it: a
  * grain with nothing stored yet, and an explicit backfill. Both are asking the
  * same question, which is "give me everything you still have".
+ *
+ * Everything is then clamped to Vercel's retention line, and that clamp is the
+ * whole reason this function is exported and tested. Asking for a window that
+ * starts before the line is not answered with less data, it is refused with a
+ * 400 for the entire query. `subMonths(now, 2)` is about 61 days, so every one
+ * of the eight month-grain queries failed on every run, silently, while the
+ * day and week grains carried on and kept the report looking almost healthy.
+ * Two whole calendar months are still returned inside the clamped window
+ * anyway, because Vercel reports a complete bucket for any bucket the window
+ * so much as touches.
  */
-function windowFor(
+export function windowFor(
   grain: Grain,
   now: Date,
   days?: number,
 ): { since: Date; until: Date } {
-  if (days !== undefined) return { since: subDays(now, days), until: now };
+  const earliest = subDays(now, VERCEL_RETENTION_DAYS);
 
+  const since =
+    days !== undefined ? subDays(now, days) : defaultSince(grain, now);
+
+  return { since: since < earliest ? earliest : since, until: now };
+}
+
+function defaultSince(grain: Grain, now: Date): Date {
   switch (grain) {
     case "day":
-      return { since: subDays(now, BACKFILL_DAYS), until: now };
+      return subDays(now, BACKFILL_DAYS);
     case "week":
-      return { since: subWeeks(now, 2), until: now };
+      return subWeeks(now, 2);
     case "month":
-      return { since: subMonths(now, 2), until: now };
+      return subMonths(now, 2);
   }
 }
 

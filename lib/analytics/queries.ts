@@ -33,6 +33,31 @@ function n(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/**
+ * A `date` column as the YYYY-MM-DD string the rest of the code assumes.
+ *
+ * The trap, which cost a rendering bug that nothing failed on: the driver
+ * parses a `date` into a JS Date at *local* midnight, so `String(row.bucket)`
+ * is "Sun Aug 30 2026 00:00:00 GMT+0100 (Western European Summer Time)" and
+ * slicing ten characters off it yields "Sun Aug 30". That is not a date any
+ * parser accepts, so every axis label and tooltip silently fell back to
+ * printing the mangled string.
+ *
+ * Every query below now casts to ::text in SQL, which is both timezone proof
+ * and cheaper than a round trip through Date. This exists for the case where
+ * one is missed: toISOString would shift a local-midnight Date back a day in
+ * any timezone east of UTC, so the parts are read locally.
+ */
+export function toBucketString(value: unknown): string {
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  return String(value).slice(0, 10);
+}
+
 // Postgres hands back integers as numbers but bigints (count(*), sum()) as
 // strings over the HTTP driver, and a null for an empty aggregate. This keeps
 // that from leaking into arithmetic in the page.
@@ -67,13 +92,13 @@ export async function fetchSeries(
 ): Promise<SeriesPoint[]> {
   const [from, to] = bounds(range);
   const rows = asRows(await getSql()`
-    select bucket, pageviews, visitors
+    select bucket::text as bucket, pageviews, visitors
     from vercel_totals
     where grain = ${grain} and bucket >= ${from} and bucket <= ${to}
     order by bucket
   `);
   return rows.map((row) => ({
-    bucket: String(row.bucket).slice(0, 10),
+    bucket: toBucketString(row.bucket),
     pageviews: n(row.pageviews),
     visitors: n(row.visitors),
   }));
@@ -179,13 +204,37 @@ export async function fetchDimensionCounts(
   return Object.fromEntries(rows.map((row) => [String(row.dimension), n(row.n)]));
 }
 
+/**
+ * The oldest bucket stored for a grain, or null if there are none.
+ *
+ * Used to decide whether a "vs the previous period" comparison is honest. It
+ * is not enough for the earlier window to return rows: Vercel only ever held
+ * a month, so on a fresh mirror the window before a 30 day range is covered by
+ * one stored day, and dividing by it produced "up 9,213%" on a site that had
+ * done nothing unusual. A delta is only meaningful when the whole of the
+ * comparison window is inside the history we actually have.
+ */
+export async function fetchEarliestBucket(
+  grain: Grain,
+): Promise<string | null> {
+  const rows = asRows(await getSql()`
+    select min(bucket)::text as bucket from vercel_totals where grain = ${grain}
+  `);
+  const bucket = rows[0]?.bucket;
+  return bucket ? String(bucket) : null;
+}
+
 /** When the nightly job last wrote anything. Drives "synced ..." in the bar. */
 export async function fetchLastSynced(): Promise<Date | null> {
   const rows = asRows(await getSql()`
     select max(fetched_at) as at from vercel_totals
   `);
   const at = rows[0]?.at;
-  return at ? new Date(String(at)) : null;
+  if (!at) return null;
+  // timestamptz, unlike date, comes back as a Date that is already correct.
+  // The String() branch is only for the day the driver changes its mind.
+  const parsed = at instanceof Date ? at : new Date(String(at));
+  return Number.isNaN(parsed.valueOf()) ? null : parsed;
 }
 
 // ---------------------------------------------------------------------------

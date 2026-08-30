@@ -147,7 +147,8 @@ async function backfill() {
 /** What actually landed, read straight back out of the database. */
 async function report() {
   const totals = await sql.query(`
-    select grain, count(*) as buckets, min(bucket) as first, max(bucket) as last,
+    select grain, count(*) as buckets,
+           min(bucket)::text as first, max(bucket)::text as last,
            sum(pageviews) as pageviews
     from vercel_totals group by grain order by grain
   `);
@@ -162,7 +163,7 @@ async function report() {
     console.log(
       `  ${String(row.grain).padEnd(6)} ${String(row.buckets).padStart(4)} buckets` +
         `  ${row.first} to ${row.last}` +
-        `  ${row.pageviews} page views`,
+        `  ${String(row.pageviews).padStart(6)} page views`,
     );
   }
 

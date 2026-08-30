@@ -8,6 +8,9 @@ import {
   resolveRange,
   toIsoDate,
 } from '../../lib/analytics/ranges';
+import { GRAINS, VERCEL_RETENTION_DAYS } from '../../lib/analytics/config';
+import { toBucketString } from '../../lib/analytics/queries';
+import { windowFor } from '../../lib/analytics/sync';
 import { buildConclusion } from '../../lib/analytics/summary';
 import {
   formatDelta,
@@ -121,6 +124,55 @@ test('analytics logic: a month-shaped range that is not one month is not exact',
 test('analytics logic: a calendar week is not treated as exact', () => {
   const end = new Date(2026, 7, 30, 12, 0, 0);
   expect(exactVisitorBucket({ from: subDays(end, 6), to: end })).toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// The sync window
+//
+// windowFor is pure and imported directly, so none of this needs a database or
+// a network call. It is tested at all because the bug it had was invisible:
+// asking Vercel for a window that starts before the plan's retention line is
+// not answered with less data, it is refused with a 400 for the whole query,
+// and only the month grain was doing it.
+// ---------------------------------------------------------------------------
+
+const daysBack = (from: Date, to: Date) =>
+  Math.round((to.getTime() - from.getTime()) / 86_400_000);
+
+test('analytics logic: no sync window reaches past what the plan will answer', () => {
+  for (const grain of GRAINS) {
+    const { since } = windowFor(grain, NOW);
+    expect(daysBack(since, NOW)).toBeLessThanOrEqual(VERCEL_RETENTION_DAYS);
+  }
+});
+
+// The specific regression. subMonths(now, 2) is about 61 days, which Vercel
+// refuses outright, so every month-grain query failed on every nightly run.
+test('analytics logic: the month grain is clamped rather than refused', () => {
+  const { since } = windowFor('month', NOW);
+  expect(daysBack(since, NOW)).toBe(VERCEL_RETENTION_DAYS);
+});
+
+// The other two were always inside the line and must not have been widened by
+// the clamp: re-reading more than it needs to costs API calls for nothing.
+test('analytics logic: the shorter grains keep their own windows', () => {
+  expect(daysBack(windowFor('day', NOW).since, NOW)).toBe(7);
+  expect(daysBack(windowFor('week', NOW).since, NOW)).toBe(14);
+});
+
+test('analytics logic: an explicit window is honoured, then clamped too', () => {
+  expect(daysBack(windowFor('day', NOW, 30).since, NOW)).toBe(30);
+  expect(daysBack(windowFor('day', NOW, 1).since, NOW)).toBe(1);
+  // A caller asking for a year gets the line, not a 400.
+  expect(daysBack(windowFor('month', NOW, 365).since, NOW)).toBe(
+    VERCEL_RETENTION_DAYS,
+  );
+});
+
+test('analytics logic: every window ends now', () => {
+  for (const grain of GRAINS) {
+    expect(windowFor(grain, NOW).until).toEqual(NOW);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -245,6 +297,27 @@ test('analytics logic: generated copy uses no dashes', () => {
     zeroSearches: [{ target: 'mcp server', count: 2 }],
   });
   expect(headline + subline).not.toMatch(/[–—]/);
+});
+
+// ---------------------------------------------------------------------------
+// Reading dates back out of Postgres
+//
+// The regression this pins: the driver parses a `date` column into a JS Date
+// at local midnight, so String(row.bucket).slice(0, 10) produced "Sun Aug 30"
+// rather than "2026-08-30", and every chart label and tooltip quietly printed
+// that instead. Nothing failed, the axis just went strange.
+// ---------------------------------------------------------------------------
+
+test('analytics logic: a date column survives whatever shape it arrives in', () => {
+  // What ::text gives, which is the path every query actually takes now.
+  expect(toBucketString('2026-08-30')).toBe('2026-08-30');
+  // What the driver gives when a cast is missed. Local midnight, so reading
+  // the parts locally is what recovers the day that was stored; toISOString
+  // would report the 29th anywhere east of UTC.
+  expect(toBucketString(new Date(2026, 7, 30))).toBe('2026-08-30');
+  expect(toBucketString(new Date(2026, 0, 1))).toBe('2026-01-01');
+  // A timestamptz string, trimmed to its day.
+  expect(toBucketString('2026-08-30T00:00:00.000Z')).toBe('2026-08-30');
 });
 
 // ---------------------------------------------------------------------------

@@ -54,11 +54,23 @@ export const BREAKDOWN_LIMIT = 100;
 // a Hobby plan. This is the number the whole project exists because of: past
 // this line the data is gone from Vercel for good, so it is also the widest
 // window a first run or a backfill can possibly recover.
-export const VERCEL_RETENTION_DAYS = 30;
+//
+// 31, measured against the live API rather than read off the pricing page.
+// `since` 31 days back returns 32 daily buckets; 32 days back is refused with
+// "the hobby plan only grants access to the latest 31 days of data". Asking
+// for more than this is not a bigger answer, it is a 400 for the whole query,
+// which is what makes clamping to it in windowFor a correctness fix and not
+// an optimisation.
+//
+// A second, separate ceiling worth knowing about: day granularity is also
+// capped at a 62 day span per request, whatever the plan. It never binds here
+// because 31 is the tighter limit, but it is why a paid plan could not simply
+// raise this number without also splitting the request.
+export const VERCEL_RETENTION_DAYS = 31;
 
 // How far back each nightly run re-reads. Vercel's numbers can still move
 // after the fact, and a cron that fails or is skipped would otherwise leave a
-// permanent hole, because Hobby only lets us look back 30 days. Re-pulling a
+// permanent hole, because Hobby only lets us look back a month. Re-pulling a
 // week every night means up to six consecutive failures self heal on the next
 // success. Every write is an upsert, so redoing work costs nothing but time.
 export const BACKFILL_DAYS = 7;
