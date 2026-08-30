@@ -46,6 +46,7 @@ yarn-error.log*
 next-env.d.ts
 
 STEPS.MD
+/backups
 /plan
 
 # claude code
