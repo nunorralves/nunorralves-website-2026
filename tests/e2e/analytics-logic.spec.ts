@@ -9,7 +9,7 @@ import {
   toIsoDate,
 } from '../../lib/analytics/ranges';
 import { GRAINS, VERCEL_RETENTION_DAYS } from '../../lib/analytics/config';
-import { databaseUrl } from '../../lib/analytics/db';
+import { databaseUrl, describeDatabaseUrlEnv } from '../../lib/analytics/db';
 import { toBucketString } from '../../lib/analytics/queries';
 import { windowFor } from '../../lib/analytics/sync';
 import { buildConclusion } from '../../lib/analytics/summary';
@@ -381,6 +381,56 @@ test('analytics logic: two attached stores resolve the same way every time', () 
     ALPHA_DATABASE_URL: 'postgres://alpha',
   }, () => {
     expect(databaseUrl()).toBe('postgres://alpha');
+  });
+});
+
+// The bug this exists for: the scan matches on a NAME, and a name is not a
+// promise. Production had something ending in _DATABASE_URL that was not a
+// connection string, and the driver reported it as a format complaint that
+// named no variable at all.
+test('analytics logic: a candidate that is not a Postgres URL is skipped', () => {
+  withEnv({
+    DATABASE_URL: undefined,
+    ALPHA_DATABASE_URL: 'not-a-connection-string',
+    WEBSITE_DATABASE_URL: 'postgresql://user:pw@host/db',
+  }, () => {
+    expect(databaseUrl()).toBe('postgresql://user:pw@host/db');
+  });
+});
+
+// Neon offers the string ready to paste into a terminal, and some UIs keep
+// the quotes you paste in.
+test('analytics logic: a psql wrapper and stray quotes are unwrapped', () => {
+  const wrapped = [
+    `psql 'postgresql://user:pw@host/db'`,
+    `"postgresql://user:pw@host/db"`,
+    `  postgresql://user:pw@host/db  `,
+  ];
+  for (const value of wrapped) {
+    withEnv({ DATABASE_URL: value }, () => {
+      expect(databaseUrl()).toBe('postgresql://user:pw@host/db');
+    });
+  }
+});
+
+// Names and schemes only. This goes back over HTTP to whoever holds
+// CRON_SECRET, and a connection string carries a password.
+test('analytics logic: the diagnosis never leaks the connection string', () => {
+  withEnv({
+    DATABASE_URL: undefined,
+    WEBSITE_DATABASE_URL: 'postgresql://user:hunter2@host/db',
+  }, () => {
+    const described = describeDatabaseUrlEnv();
+    expect(described).toContain('WEBSITE_DATABASE_URL');
+    expect(described).toContain('postgresql://');
+    expect(described).not.toContain('hunter2');
+    expect(described).not.toContain('host/db');
+  });
+});
+
+test('analytics logic: the diagnosis names a value with no scheme', () => {
+  withEnv({ DATABASE_URL: undefined, ALPHA_DATABASE_URL: 'oops' }, () => {
+    expect(describeDatabaseUrlEnv()).toBe('ALPHA_DATABASE_URL starts with no scheme at all');
   });
 });
 

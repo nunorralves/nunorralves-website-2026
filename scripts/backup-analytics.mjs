@@ -43,11 +43,21 @@ const TABLES = {
 // variables it manages, so production has WEBSITE_DATABASE_URL rather than
 // DATABASE_URL. Exact name first, then anything ending in _DATABASE_URL.
 function databaseUrl() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  const prefixed = Object.keys(process.env)
-    .filter((key) => key.endsWith("_DATABASE_URL") && process.env[key])
-    .sort();
-  return prefixed.length > 0 ? process.env[prefixed[0]] : undefined;
+  const candidates = [
+    ...(process.env.DATABASE_URL ? ["DATABASE_URL"] : []),
+    ...Object.keys(process.env)
+      .filter((k) => k !== "DATABASE_URL" && k.endsWith("_DATABASE_URL") && process.env[k])
+      .sort(),
+  ];
+  for (const name of candidates) {
+    // Neon's dashboard hands the string over as `psql '...'`, and a UI that
+    // does not strip quotes keeps them. Both are right apart from the wrapper.
+    let value = process.env[name].trim();
+    if (value.startsWith("psql ")) value = value.slice(5).trim();
+    if (/^(".*"|'.*')$/s.test(value)) value = value.slice(1, -1).trim();
+    if (/^postgres(ql)?:\/\//.test(value)) return value;
+  }
+  return undefined;
 }
 
 const url = databaseUrl();

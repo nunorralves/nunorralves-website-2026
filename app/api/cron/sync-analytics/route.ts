@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { VERCEL_RETENTION_DAYS } from "lib/analytics/config";
+import { describeDatabaseUrlEnv, isDbConfigured } from "lib/analytics/db";
 import { rollupBeaconEvents } from "lib/analytics/rollup";
 import { syncFromVercel } from "lib/analytics/sync";
 
@@ -55,6 +56,17 @@ export async function GET(request: Request) {
     parsed === undefined
       ? undefined
       : Math.min(VERCEL_RETENTION_DAYS, Math.max(1, Math.round(parsed)));
+
+  // Answered before the sync rather than as a driver error thirty seconds in.
+  // "Database connection string format for `neon()` should be ..." says
+  // nothing about which variable was wrong, which is the only thing you need
+  // to know when a deployment has several of them.
+  if (!isDbConfigured()) {
+    return NextResponse.json(
+      { ok: false, error: `No usable database connection string. Found: ${describeDatabaseUrlEnv()}.` },
+      { status: 500 },
+    );
+  }
 
   try {
     const sync = await syncFromVercel(new Date(), { days });
