@@ -91,6 +91,23 @@ function parseView(value: string | undefined): ViewKey {
   return "requestPath";
 }
 
+// How many rows the main table shows.
+//
+// The default was 50, and on this site that meant 57 paths, most of them one
+// view apiece and a fair number of them bot probes for /signin and /app. The
+// three pinned panels are meant to be on screen without a click, and 50 rows
+// put them fifteen hundred pixels down, which is the same thing as burying
+// them behind one. The tail is not information: anything below the top 25 here
+// has a single digit against it.
+const TABLE_ROWS = 25;
+
+// The three pinned panels are a standing summary rather than a list to work
+// through, and they sit side by side, so they get a shorter tail. They are fed
+// by slicing the same queries the sidebar views use: fetching each list twice
+// at two different limits is how "Referrers" in the sidebar ended up showing
+// ten rows while every other dimension showed twenty five.
+const PANEL_ROWS = 10;
+
 // Shares for the ranked bars, computed against the largest row in the table
 // rather than against the range total. A table whose top row is 8% of the
 // total draws eight bars nobody can tell apart.
@@ -283,9 +300,13 @@ export default async function InsightsPage({
     },
   ];
 
-  const referrerShare = shares(referrers.map((row) => row.visitors));
-  const outboundShare = shares(outbound.map((row) => row.count));
-  const zeroShare = shares(zeroSearches.map((row) => row.count));
+  const topReferrers = referrers.slice(0, PANEL_ROWS);
+  const topOutbound = outbound.slice(0, PANEL_ROWS);
+  const topZeroSearches = zeroSearches.slice(0, PANEL_ROWS);
+
+  const referrerShare = shares(topReferrers.map((row) => row.visitors));
+  const outboundShare = shares(topOutbound.map((row) => row.count));
+  const zeroShare = shares(topZeroSearches.map((row) => row.count));
 
   return (
     <Shell
@@ -318,7 +339,7 @@ export default async function InsightsPage({
           table: (
             <DataTable
               headings={["Source", "Visitors"]}
-              rows={referrers.map((row, index) => ({
+              rows={topReferrers.map((row, index) => ({
                 label: row.value,
                 share: referrerShare(index),
                 values: [formatCount(row.visitors)],
@@ -334,7 +355,7 @@ export default async function InsightsPage({
           table: (
             <DataTable
               headings={["Destination", "Clicks"]}
-              rows={outbound.map((row, index) => ({
+              rows={topOutbound.map((row, index) => ({
                 label: row.target,
                 share: outboundShare(index),
                 values: [formatCount(row.count)],
@@ -350,7 +371,7 @@ export default async function InsightsPage({
           table: (
             <DataTable
               headings={["Query", "Times", "Results"]}
-              rows={zeroSearches.map((row, index) => ({
+              rows={topZeroSearches.map((row, index) => ({
                 label: row.target,
                 share: zeroShare(index),
                 values: [formatCount(row.count), "0"],
@@ -439,15 +460,15 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
     queries.fetchDimensionCounts(grain, range),
     // Pages are fetched whatever the selected view: the conclusion sentence
     // needs the top one, and the pages table is the default view anyway.
-    queries.fetchBreakdown("requestPath", grain, range),
-    queries.fetchBreakdown("referrerHostname", grain, range, 10),
+    queries.fetchBreakdown("requestPath", grain, range, TABLE_ROWS),
+    queries.fetchBreakdown("referrerHostname", grain, range, TABLE_ROWS),
     queries.fetchEngagement(range),
     queries.fetchEngagement(previousRange),
     queries.fetchPageEngagement(range),
     queries.fetchIntentTotals(range),
     queries.fetchIntentTotals(previousRange),
-    queries.fetchIntent(range, "outbound", 10),
-    queries.fetchIntent(range, "search_zero", 10),
+    queries.fetchIntent(range, "outbound", TABLE_ROWS),
+    queries.fetchIntent(range, "search_zero", TABLE_ROWS),
     queries.fetchLastSynced(),
     queries.fetchPageBounce(range, now),
   ]);
@@ -459,13 +480,13 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
       : view === "referrerHostname"
         ? referrers
         : (DIMENSIONS as readonly string[]).includes(view)
-          ? await queries.fetchBreakdown(view as Dimension, grain, range)
+          ? await queries.fetchBreakdown(view as Dimension, grain, range, TABLE_ROWS)
           : [];
 
   const searches = (DIMENSIONS as readonly string[]).includes(view)
     ? []
     : view === "search"
-      ? await queries.fetchIntent(range, "search", 25)
+      ? await queries.fetchIntent(range, "search", TABLE_ROWS)
       : [];
 
   // Only compare against a window our history actually covers. Vercel held a
@@ -502,6 +523,11 @@ async function load(range: DateRange, view: ViewKey, now: Date) {
       outbound,
       searches,
       zeroSearches,
+      // The distinct value count for the whole range, which is what makes
+      // "top 25 of 57" possible. The sidebar shows the same number, so a
+      // truncated table that did not say so would look like it disagreed
+      // with the link that opened it.
+      total: counts[view],
     }),
   };
 }
@@ -515,6 +541,15 @@ type TableSpec = {
   mono: boolean;
 };
 
+// Says so when the table is showing only the head of the list. A truncated
+// table that stays quiet about it is the kind of thing you read a wrong
+// conclusion off six months later.
+function noteWithTotal(base: string, shown: number, total?: number): string {
+  return total !== undefined && total > shown
+    ? `top ${shown} of ${total}, ${base}`
+    : base;
+}
+
 function buildTable(
   view: ViewKey,
   data: {
@@ -525,6 +560,7 @@ function buildTable(
     outbound: queries.IntentRow[];
     searches: queries.IntentRow[];
     zeroSearches: queries.IntentRow[];
+    total?: number;
   },
 ): TableSpec {
   if (view === "requestPath") {
@@ -537,7 +573,11 @@ function buildTable(
     const share = shares(data.pages.map((row) => row.pageviews));
     return {
       title: "Pages",
-      note: "Vercel counts, beacon engagement",
+      note: noteWithTotal(
+        "Vercel counts and beacon engagement",
+        data.pages.length,
+        data.total,
+      ),
       headings: ["Page", "Views", "Visitors", "Median read", "Scroll", "Bounce"],
       mono: true,
       empty: "No pages recorded in this range.",
@@ -562,14 +602,18 @@ function buildTable(
   }
 
   if (view === "engagement") {
-    const share = shares(data.pageEngagement.map((row) => row.views));
+    // Fetched wider than it is shown, because the pages table above looks up
+    // engagement by path and its top 25 by Vercel views is not the same set as
+    // the top 25 by beacon views. Only the display is trimmed.
+    const shown = data.pageEngagement.slice(0, TABLE_ROWS);
+    const share = shares(shown.map((row) => row.views));
     return {
       title: "Engagement",
-      note: "beacon only",
+      note: noteWithTotal("beacon only", shown.length, data.pageEngagement.length),
       headings: ["Page", "Views", "Median read", "Scroll"],
       mono: true,
       empty: "The beacon has not recorded anything in this range.",
-      rows: data.pageEngagement.map((row, index) => ({
+      rows: shown.map((row, index) => ({
         label: row.path,
         share: share(index),
         values: [
@@ -623,7 +667,7 @@ function buildTable(
   const share = shares(data.selected.map((row) => row.pageviews));
   return {
     title: DIMENSION_LABELS[view as Dimension],
-    note: "Vercel mirror",
+    note: noteWithTotal("Vercel mirror", data.selected.length, data.total),
     headings: [DIMENSION_LABELS[view as Dimension], "Views", "Visitors"],
     mono: view === "referrerHostname" || view === "route",
     empty: "Nothing recorded for this dimension in this range.",

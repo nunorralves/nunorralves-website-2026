@@ -73,6 +73,27 @@ export async function POST(request: Request) {
     return new NextResponse(null, { status: 204 });
   }
 
+  // Production only, and this is a data integrity rule rather than a
+  // performance one.
+  //
+  // DATABASE_URL in .env.local points at the same Neon database the deployed
+  // site writes to, so every page I opened while building this wrote real
+  // looking sessions into real analytics. The first backfill surfaced it as a
+  // "median read" of three and a half minutes, which was a preview tab left
+  // open on my own machine. Dev traffic is not traffic.
+  //
+  // The Vercel half of the pipeline never had this problem: its API defaults
+  // to production and answers nothing else. This is the beacon catching up.
+  //
+  // Set ANALYTICS_ALLOW_LOCAL_BEACON=1 to write from a local run anyway, which
+  // is the only way to exercise this endpoint end to end. Keep it out of
+  // Vercel, where VERCEL_ENV already says the truth.
+  const isProduction = process.env.VERCEL_ENV === "production";
+  const allowLocal = process.env.ANALYTICS_ALLOW_LOCAL_BEACON === "1";
+  if (!isProduction && !allowLocal) {
+    return new NextResponse(null, { status: 204 });
+  }
+
   // Off site callers have no business here. Not a security boundary, since
   // the header is trivially forged, but it filters the casual case.
   const origin = request.headers.get("origin");
