@@ -15,6 +15,7 @@ import { windowFor } from '../../lib/analytics/sync';
 import { missingVercelEnv } from '../../lib/analytics/vercel-api';
 import { buildConclusion } from '../../lib/analytics/summary';
 import {
+  axisCeiling,
   formatCoverage,
   formatDelta,
   formatDeltaPoints,
@@ -471,6 +472,23 @@ test('analytics logic: a delta needs something to compare against', () => {
 test('analytics logic: rate deltas are stated in percentage points', () => {
   expect(formatDeltaPoints(0.46, 0.49)).toBe('▼ 3.0pp');
   expect(formatDeltaPoints(0.46, null)).toBeNull();
+});
+
+// A y axis nobody has to do division on to read.
+test('analytics logic: the chart ceiling rounds up to a readable number', () => {
+  // 1,873 over four gridlines is 468, 937, 1,405. 2,000 is 500, 1,000, 1,500.
+  expect(axisCeiling(1873, 4)).toBe(2000);
+  expect(axisCeiling(79, 4)).toBe(80);
+  expect(axisCeiling(80, 4)).toBe(80);
+  expect(axisCeiling(81, 4)).toBe(100);
+
+  // Counts, so the step never goes fractional however small the peak is.
+  expect(axisCeiling(1, 4)).toBe(4);
+  expect(axisCeiling(3, 4)).toBe(4);
+
+  // A range of nothing still needs an axis to draw against.
+  expect(axisCeiling(0, 4)).toBe(4);
+  expect(axisCeiling(Number.NaN, 4)).toBe(4);
 });
 
 // The year on both ends, including when they match. On All time the first date

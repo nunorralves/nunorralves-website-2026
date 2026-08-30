@@ -148,3 +148,33 @@ export function formatCoverage(
   // cheap price for a line nobody has to reason about.
   return `data ${format(from, "d MMM yyyy")} to ${format(to, "d MMM yyyy")}`;
 }
+
+/**
+ * A round number at or above a peak, divisible into `divisions` equal steps.
+ *
+ * Scaling straight to the peak puts the top gridline on whatever the busiest
+ * day happened to be, and labelling four gridlines off 1,873 gives 468, 937,
+ * 1,405 - numbers nobody can hold in their head or compare to the next range's.
+ * Rounding the step up to 1, 2, 2.5, 5 or 10 times a power of ten buys ticks
+ * you can read at a glance for a little empty space at the top, which is the
+ * trade every axis worth having makes. The 2.5 earns its place: without it a
+ * peak of 81 has to climb from a step of 20 to one of 50 and the axis tops out
+ * at 200, which draws a busy month as a line hugging the floor.
+ *
+ * The step is rounded to a whole number, and floored at 1, because every
+ * figure on this page is a count and a y axis labelled 0.25 would be
+ * describing a quarter of a page view. Rounding cannot drop the ceiling below
+ * the peak: the only fractional candidates are the 2.5s, which land on a half
+ * and so round up, and anything small enough to round to zero came from a peak
+ * already below the number of divisions.
+ */
+export function axisCeiling(peak: number, divisions: number): number {
+  if (!Number.isFinite(peak) || peak <= 0) return divisions;
+  const rough = peak / divisions;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const step =
+    [1, 2, 2.5, 5, 10]
+      .map((multiple) => multiple * magnitude)
+      .find((candidate) => candidate >= rough - 1e-9) ?? magnitude * 10;
+  return Math.max(1, Math.round(step)) * divisions;
+}

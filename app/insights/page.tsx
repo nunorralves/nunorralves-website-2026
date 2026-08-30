@@ -486,6 +486,7 @@ export default async function InsightsPage({
           }))}
           grain={grain}
           label={`Page views by ${grain} over the selected range`}
+          unit='page views'
           markers={annotations.map((annotation) => ({
             at: annotation.at,
             kind: annotation.kind,
