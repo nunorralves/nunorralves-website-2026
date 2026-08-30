@@ -95,3 +95,84 @@ test('insights: the sitemap does not mention it', async ({ request }) => {
   expect(res.status()).toBe(200);
   expect(await res.text()).not.toContain('/insights');
 });
+
+// ---------------------------------------------------------------------------
+// The write routes and the backup, added with the timeline.
+//
+// These live under /insights rather than /api/insights on purpose: proxy.ts
+// matches "/insights/:path*", so they inherit the dashboard's session check
+// instead of carrying a second copy of it, and the session cookie is scoped
+// Path=/insights so a form posting anywhere else would arrive with no cookie
+// at all. That is a claim about routing, and routing is exactly the kind of
+// thing that is true until somebody moves a folder.
+// ---------------------------------------------------------------------------
+
+// Not a redirect assertion but a "did not do the thing" assertion. A 401, a
+// 404 or a bounce to the login page are all acceptable; a 200 is only
+// acceptable if the browser was sent to the login page to get there.
+function refused(status: number, location: string | undefined) {
+  if ([401, 403, 404].includes(status)) return true;
+  return status >= 300 && status < 400 && (location ?? '').includes('/insights/login');
+}
+
+test('insights: adding an annotation is refused without a session', async ({ request }) => {
+  const res = await request.post('/insights/annotations', {
+    maxRedirects: 0,
+    form: { at: '2026-08-26', kind: 'note', label: 'should never be written' },
+  });
+
+  expect(
+    refused(res.status(), res.headers()['location']),
+    `status ${res.status()} to ${res.headers()['location']}`,
+  ).toBe(true);
+});
+
+test('insights: deleting an annotation is refused without a session', async ({ request }) => {
+  const res = await request.post('/insights/annotations/delete', {
+    maxRedirects: 0,
+    form: { id: '1' },
+  });
+
+  expect(
+    refused(res.status(), res.headers()['location']),
+    `status ${res.status()} to ${res.headers()['location']}`,
+  ).toBe(true);
+});
+
+// The one route on the site that would hand over the whole database, so it is
+// worth being explicit that nothing came back as well as that it was refused.
+test('insights: the backup download is refused without a session', async ({ request }) => {
+  const res = await request.get('/insights/backup', { maxRedirects: 0 });
+
+  expect(
+    refused(res.status(), res.headers()['location']),
+    `status ${res.status()} to ${res.headers()['location']}`,
+  ).toBe(true);
+
+  const body = await res.text();
+  expect(body).not.toContain('vercel_totals');
+  expect(body).not.toContain('daily_engagement');
+  expect(body).not.toContain('annotations');
+});
+
+// A forged cookie is the interesting case for a write route: the proxy is the
+// only thing checking, so an unsigned value walking in would be silent.
+test('insights: a forged cookie does not open the write routes', async ({ context }) => {
+  await context.addCookies([
+    {
+      name: 'insights_session',
+      value: `${Math.floor(Date.now() / 1000) + 86_400}.${'a'.repeat(64)}`,
+      url: 'http://localhost:3000',
+    },
+  ]);
+
+  const res = await context.request.post('/insights/annotations', {
+    maxRedirects: 0,
+    form: { at: '2026-08-26', kind: 'note', label: 'forged' },
+  });
+
+  expect(
+    refused(res.status(), res.headers()['location']),
+    `status ${res.status()} to ${res.headers()['location']}`,
+  ).toBe(true);
+});

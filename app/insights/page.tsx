@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AnnotationRail from "app/components/insights/AnnotationRail";
 import AreaChart from "app/components/insights/AreaChart";
 import DataTable, { type TableRow } from "app/components/insights/DataTable";
 import DimensionNav, {
@@ -7,6 +8,15 @@ import DimensionNav, {
 } from "app/components/insights/DimensionNav";
 import RangeToolbar from "app/components/insights/RangeToolbar";
 import StatStrip, { type Stat } from "app/components/insights/StatStrip";
+import TimelineSection from "app/components/insights/TimelineSection";
+import {
+  LIFT_WINDOW_DAYS,
+  isAnnotationMessage,
+  liftsFor,
+  shiftIsoDay,
+  type AnnotationMessage,
+  type Lift,
+} from "lib/analytics/annotations";
 import {
   DIMENSIONS,
   DIMENSION_LABELS,
@@ -15,6 +25,7 @@ import {
 import { isDbConfigured } from "lib/analytics/db";
 import {
   formatCount,
+  formatCoverage,
   formatDelta,
   formatDeltaDuration,
   formatDeltaPoints,
@@ -129,6 +140,8 @@ type SearchParams = Promise<{
   from?: string;
   to?: string;
   rows?: string;
+  /** The outcome of the last annotation write, as a code. */
+  ann?: string;
 }>;
 
 export default async function InsightsPage({
@@ -145,6 +158,14 @@ export default async function InsightsPage({
   // JavaScript at all. It also means the tail is not fetched or sent until
   // somebody asks for it.
   const expanded = params.rows === "all";
+
+  // Narrowed against a fixed table rather than rendered. This value comes back
+  // from a redirect and could equally have come from a link somebody sent me,
+  // and a page that prints arbitrary query text in its own voice is a phishing
+  // page I built myself. Anything unrecognised is simply not a message.
+  const message: AnnotationMessage | null = isAnnotationMessage(params.ann)
+    ? params.ann
+    : null;
 
   // A custom pair outranks the preset when both are present and the pair
   // parses. parseCustomRange returns null on anything mangled, so a hand
@@ -166,6 +187,7 @@ export default async function InsightsPage({
         custom={custom}
         rangeQuery={rangeQuery}
         syncedNote='no database'
+        coverageNote='no data stored'
         nav={emptyNav()}
       >
         <Notice
@@ -196,6 +218,7 @@ export default async function InsightsPage({
         custom={custom}
         rangeQuery={rangeQuery}
         syncedNote={missingSchema ? "no schema" : "read failed"}
+        coverageNote='no data stored'
         nav={emptyNav()}
       >
         <Notice
@@ -214,7 +237,7 @@ export default async function InsightsPage({
     );
   }
 
-  const { series, totals, previous, engagement, previousEngagement, intent, previousIntent, exactVisitors, counts, referrers, outbound, zeroSearches, pages, table, lastSynced } = data;
+  const { series, totals, previous, engagement, previousEngagement, intent, previousIntent, exactVisitors, counts, referrers, outbound, zeroSearches, pages, table, lastSynced, annotations, recentAnnotations, annotationCount, lifts, coverage } = data;
 
   const grain = pickGrain(range);
   const exact = exactVisitorBucket(range);
@@ -313,6 +336,24 @@ export default async function InsightsPage({
         },
       ],
     },
+    {
+      // A third source, and the only one I write by hand. It gets its own
+      // group rather than a row in either of the others, because the timeline
+      // is not a way of slicing the traffic: it is the set of things the
+      // traffic is being explained by.
+      title: "Timeline",
+      items: [
+        {
+          key: "annotations",
+          label: "Annotations",
+          count: formatCount(annotationCount),
+          // Down the page rather than into a different table. Everything else
+          // in this sidebar swaps the main table out; this one is a section
+          // that is always rendered, so the link is an anchor.
+          href: "#timeline",
+        },
+      ],
+    },
   ];
 
   const topReferrers = referrers.slice(0, PANEL_ROWS);
@@ -330,7 +371,16 @@ export default async function InsightsPage({
       custom={custom}
       rangeQuery={rangeQuery}
       syncedNote={`production, synced ${formatSyncedAt(lastSynced, now)}`}
+      coverageNote={formatCoverage(coverage.first, coverage.last)}
       nav={nav}
+      timeline={
+        <TimelineSection
+          annotations={recentAnnotations}
+          lifts={lifts}
+          today={toIsoDate(now)}
+          message={message}
+        />
+      }
       main={
         <>
           <div className='mb-4 flex flex-wrap items-baseline justify-between gap-2'>
@@ -428,7 +478,7 @@ export default async function InsightsPage({
 
       <StatStrip stats={stats} />
 
-      <div className='border-b border-[var(--color-border)] px-4 pt-4 pb-2'>
+      <div className='px-4 pt-4 pb-2'>
         <AreaChart
           points={series.map((point) => ({
             bucket: point.bucket,
@@ -436,8 +486,18 @@ export default async function InsightsPage({
           }))}
           grain={grain}
           label={`Page views by ${grain} over the selected range`}
+          markers={annotations.map((annotation) => ({
+            at: annotation.at,
+            kind: annotation.kind,
+            label: annotation.label,
+          }))}
         />
       </div>
+
+      {/* The legend for the pins above. It carries the border the chart block
+          used to, so the two read as one unit rather than as a chart and a
+          list that happen to be adjacent. */}
+      <AnnotationRail annotations={annotations} />
     </Shell>
   );
 }
@@ -487,6 +547,11 @@ async function load(
     zeroSearches,
     lastSynced,
     pageBounce,
+    annotations,
+    recentAnnotations,
+    annotationCount,
+    coverage,
+    fullSpan,
   ] = await Promise.all([
     queries.fetchSeries(grain, range),
     queries.fetchTotals(grain, range),
@@ -509,6 +574,18 @@ async function load(
     queries.fetchIntent(range, "search_zero", limit),
     queries.fetchLastSynced(),
     queries.fetchPageBounce(range, now),
+    // The markers inside the range, for the chart pins and the rail.
+    queries.fetchAnnotations(range),
+    // The editor's list, deliberately not range bound: a list that emptied
+    // itself on the 24h preset would be a list I could not delete a mistake
+    // from. See fetchRecentAnnotations.
+    queries.fetchRecentAnnotations(),
+    queries.fetchAnnotationCount(),
+    // Two spans from one query shape. The range-bound one is the toolbar's
+    // "this is what is behind the numbers you are looking at"; the absolute
+    // one is what decides whether a marker has a baseline at all.
+    queries.fetchDaySpan(range),
+    queries.fetchDaySpan(),
   ]);
 
   // The selected dimension, unless it is one of the two already fetched above.
@@ -538,6 +615,30 @@ async function load(
       ? previousTotals
       : null;
 
+  // The daily series the lift is measured off, fetched exactly as wide as the
+  // markers on screen need and no wider. Always the day grain, whatever the
+  // chart is drawn from: a lift computed off weekly buckets could not resolve
+  // a marker at all, because the week containing the launch is also the week
+  // containing the three days before it.
+  //
+  // One extra query, and only when there is something to measure.
+  const lifts =
+    recentAnnotations.length > 0 && fullSpan.first !== null
+      ? liftsFor(
+          recentAnnotations,
+          await queries.fetchDailyPageviews(
+            // The list is newest first, so the last row is the oldest marker,
+            // and its baseline starts a window before it.
+            shiftIsoDay(
+              recentAnnotations[recentAnnotations.length - 1]!.at,
+              -LIFT_WINDOW_DAYS,
+            ),
+            fullSpan.last ?? toIsoDate(now),
+          ),
+          fullSpan,
+        )
+      : new Map<number, Lift>();
+
   return {
     series,
     totals,
@@ -553,6 +654,11 @@ async function load(
     outbound,
     zeroSearches,
     lastSynced,
+    annotations,
+    recentAnnotations,
+    annotationCount,
+    lifts,
+    coverage,
     table: buildTable(view, {
       selected,
       pages,
@@ -787,9 +893,11 @@ function Shell({
   custom,
   rangeQuery,
   syncedNote,
+  coverageNote,
   nav,
   children,
   main,
+  timeline,
   pinned,
 }: {
   preset: RangePreset | null;
@@ -797,9 +905,12 @@ function Shell({
   custom: DateRange | null;
   rangeQuery: string;
   syncedNote: string;
+  coverageNote: string;
   nav: NavGroup[];
   children?: React.ReactNode;
   main?: React.ReactNode;
+  /** The annotation editor, between the table and the pinned panels. */
+  timeline?: React.ReactNode;
   pinned?: PinnedPanel[];
 }) {
   return (
@@ -822,6 +933,7 @@ function Shell({
               : null
           }
           syncedNote={syncedNote}
+          coverageNote={coverageNote}
         />
 
         {children}
@@ -835,6 +947,8 @@ function Shell({
             <div className='min-w-0 px-4 py-4'>{main}</div>
           </div>
         ) : null}
+
+        {timeline}
 
         {pinned ? (
           // Pinned, not tabbed. These three answer the questions I actually

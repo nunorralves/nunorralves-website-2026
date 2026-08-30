@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { syncContentAnnotations } from "lib/analytics/annotations-store";
 import { VERCEL_RETENTION_DAYS } from "lib/analytics/config";
 import { describeDatabaseUrlEnv, isDbConfigured } from "lib/analytics/db";
 import { rollupBeaconEvents } from "lib/analytics/rollup";
@@ -15,7 +16,8 @@ export const maxDuration = 60;
 
 /**
  * Nightly ETL. Pulls the rolling window from Vercel Web Analytics into Neon,
- * then folds any beacon events into their permanent daily rollups.
+ * folds any beacon events into their permanent daily rollups, and rebuilds the
+ * content half of the timeline from post and project frontmatter.
  *
  * Scheduled from vercel.json. Vercel sends CRON_SECRET as a bearer token on
  * cron invocations, and this refuses anything else, because the path itself is
@@ -90,12 +92,31 @@ export async function GET(request: Request) {
     const sync = await syncFromVercel(new Date(), { days });
     const rollup = await rollupBeaconEvents();
 
+    // The timeline's automatic half, rebuilt from the .mdx files on disk. This
+    // is why it needs no publish hook and no manual step: a post goes live
+    // when a file lands on main, and the next run of this reads it. Every
+    // write is an upsert on the external key, so re-running moves markers
+    // whose frontmatter dates changed and duplicates nothing.
+    //
+    // Its own try/catch because it is the one step here that touches the
+    // filesystem rather than an API. A content file with unreadable
+    // frontmatter must not cost me the Vercel sync that already succeeded
+    // above and cannot be redone once the retention window has moved.
+    let annotations: { written: number; removed: number } | null = null;
+    let annotationsError: string | null = null;
+    try {
+      annotations = await syncContentAnnotations();
+    } catch (error) {
+      annotationsError = (error as Error).message;
+    }
+
     // A partial sync still moves history forward, so errors are reported
     // rather than thrown. The status code carries the difference so a failing
     // dimension is visible in Vercel's cron log instead of silently passing.
+    const clean = sync.errors.length === 0 && annotationsError === null;
     return NextResponse.json(
-      { ok: sync.errors.length === 0, sync, rollup },
-      { status: sync.errors.length === 0 ? 200 : 207 },
+      { ok: clean, sync, rollup, annotations, annotationsError },
+      { status: clean ? 200 : 207 },
     );
   } catch (error) {
     return NextResponse.json(

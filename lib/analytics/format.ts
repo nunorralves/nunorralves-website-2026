@@ -111,3 +111,38 @@ export function formatDeltaDuration(
   if (seconds === 0) return "level";
   return `${seconds > 0 ? "▲" : "▼"} ${Math.abs(seconds)}s`;
 }
+
+/**
+ * The stretch of history actually behind the numbers on screen.
+ *
+ * Distinct from the range, and that distinction is the whole reason it is on
+ * the page. Asking for 12 months on a mirror that started in February gives a
+ * chart with seven empty months on the left, and an empty stretch looks
+ * exactly like a period with no traffic rather than like a period before any
+ * was recorded. This is the one line that tells those apart, and it moves with
+ * the range because the answer to "what have you got" depends on what you
+ * asked for.
+ *
+ * Dates in, as the YYYY-MM-DD strings the queries return, so this never
+ * touches a Date that a timezone could shift by a day.
+ */
+export function formatCoverage(
+  first: string | null,
+  last: string | null,
+): string {
+  if (!first || !last) return "no data stored";
+
+  const from = new Date(`${first}T00:00:00Z`);
+  const to = new Date(`${last}T00:00:00Z`);
+  if (Number.isNaN(from.valueOf()) || Number.isNaN(to.valueOf())) {
+    return "no data stored";
+  }
+
+  if (first === last) return `data ${format(to, "d MMM yyyy")}`;
+
+  // The year is stated once when both ends share it, and twice when they do
+  // not, which is the difference between "Feb to Aug 2026" and a range that
+  // quietly crosses a new year without saying so.
+  const sameYear = from.getUTCFullYear() === to.getUTCFullYear();
+  return `data ${format(from, sameYear ? "d MMM" : "d MMM yyyy")} to ${format(to, "d MMM yyyy")}`;
+}

@@ -4,7 +4,12 @@ import {
   type Dimension,
   type Grain,
 } from "./config";
-import { asRows, getSql } from "./db";
+import type {
+  Annotation,
+  AnnotationKind,
+  AnnotationSource,
+} from "./annotations";
+import { asRows, getSql, type Row } from "./db";
 import { toIsoDate, type DateRange } from "./ranges";
 
 // Every read the dashboard makes, in one place, and nothing else. No React, no
@@ -418,4 +423,131 @@ export async function fetchPageBounce(
     bounce.set(String(row.path), n(row.bounces) / sessions);
   }
   return bounce;
+}
+
+// ---------------------------------------------------------------------------
+// Source C: the timeline
+// ---------------------------------------------------------------------------
+
+// Every row is mapped through this rather than cast, because `kind` and
+// `source` are constrained in the database and typed as unions here, and the
+// two are only the same thing while nobody has run an ALTER TABLE by hand.
+function toAnnotation(row: Row): Annotation {
+  return {
+    id: n(row.id),
+    at: toBucketString(row.at),
+    kind: String(row.kind) as AnnotationKind,
+    label: String(row.label),
+    url: row.url === null || row.url === undefined ? null : String(row.url),
+    source: String(row.source) as AnnotationSource,
+    externalKey:
+      row.external_key === null || row.external_key === undefined
+        ? null
+        : String(row.external_key),
+  };
+}
+
+/**
+ * The markers that fall inside the range, for the chart and the rail.
+ *
+ * Ascending, because these are drawn along an axis that runs the same way.
+ */
+export async function fetchAnnotations(
+  range: DateRange,
+): Promise<Annotation[]> {
+  const [from, to] = bounds(range);
+  const rows = asRows(await getSql()`
+    select id, at::text as at, kind, label, url, source, external_key
+    from annotations
+    where at >= ${from} and at <= ${to}
+    order by at, id
+  `);
+  return rows.map(toAnnotation);
+}
+
+/**
+ * The most recent markers whatever the range, for the Timeline editor.
+ *
+ * Deliberately not range bound, unlike everything else on the page. The rail
+ * under the chart answers "what happened in this window"; the editor answers
+ * "what have I recorded", and a list that emptied itself when I switched to
+ * 24h would be a list I could not delete a mistake from.
+ */
+export async function fetchRecentAnnotations(
+  limit = 40,
+): Promise<Annotation[]> {
+  const rows = asRows(await getSql()`
+    select id, at::text as at, kind, label, url, source, external_key
+    from annotations
+    order by at desc, id desc
+    limit ${limit}
+  `);
+  return rows.map(toAnnotation);
+}
+
+/** How many markers exist at all, for the sidebar count. */
+export async function fetchAnnotationCount(): Promise<number> {
+  const rows = asRows(await getSql()`select count(*) as n from annotations`);
+  return n(rows[0]?.n);
+}
+
+/**
+ * Daily page views as a map, which is what the lift calculation eats.
+ *
+ * Always the day grain, whatever the chart is drawn from. A lift measured off
+ * weekly buckets could not resolve a marker at all: the week containing the
+ * launch is also the week containing the three days before it.
+ */
+export async function fetchDailyPageviews(
+  from: string,
+  to: string,
+): Promise<Map<string, number>> {
+  const rows = asRows(await getSql()`
+    select bucket::text as bucket, pageviews
+    from vercel_totals
+    where grain = 'day' and bucket >= ${from} and bucket <= ${to}
+    order by bucket
+  `);
+  return new Map(
+    rows.map((row) => [toBucketString(row.bucket), n(row.pageviews)]),
+  );
+}
+
+export type DaySpan = { first: string | null; last: string | null };
+
+/**
+ * The oldest and newest day the mirror actually holds.
+ *
+ * Two callers, asking two different questions with the same query. The toolbar
+ * passes the selected range and gets "this is what is behind the numbers you
+ * are looking at", which is not the same as the range you asked for: a 12
+ * month window on a mirror that started in February covers seven months of
+ * nothing, and the chart cannot say so on its own. The lift calculation passes
+ * nothing and gets the absolute span, which is what decides whether a marker
+ * has a baseline at all.
+ *
+ * Day grain, because every grain is synced from the same window and the day
+ * rows are the finest statement of where the history starts and stops.
+ */
+export async function fetchDaySpan(range?: DateRange): Promise<DaySpan> {
+  const sql = getSql();
+  const rows = asRows(
+    range
+      ? await sql`
+          select min(bucket)::text as first, max(bucket)::text as last
+          from vercel_totals
+          where grain = 'day'
+            and bucket >= ${bounds(range)[0]} and bucket <= ${bounds(range)[1]}
+        `
+      : await sql`
+          select min(bucket)::text as first, max(bucket)::text as last
+          from vercel_totals
+          where grain = 'day'
+        `,
+  );
+  const row = rows[0] ?? {};
+  return {
+    first: row.first ? String(row.first) : null,
+    last: row.last ? String(row.last) : null,
+  };
 }

@@ -24,19 +24,13 @@
 import { neon } from "@neondatabase/serverless";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { BACKUP_TABLES } from "../lib/analytics/backup-tables.mjs";
 
-const TABLES = {
-  vercel_totals: ["grain", "bucket"],
-  vercel_breakdown: ["grain", "bucket", "dimension", "value"],
-  daily_engagement: ["day"],
-  daily_page_engagement: ["day", "path"],
-  daily_intent: ["day", "kind", "target"],
-  // Raw events are deliberately excluded. They are a 90 day working set that
-  // the rollups above already summarise, they are far and away the largest
-  // table, and they are the only one holding anything visitor-derived. A
-  // backup that carries them would be bigger, less useful, and more sensitive
-  // than one that does not.
-};
+// The table list and its keys live in lib/analytics/backup-tables.mjs, shared
+// verbatim with app/insights/backup/route.ts. The dashboard's download button
+// and this script are a backup and a restore of the same data, and the failure
+// mode of two copies of the list is a dump that looks complete and is not.
+const TABLES = BACKUP_TABLES;
 
 // The same rule lib/analytics/db.ts uses, restated because a plain .mjs cannot
 // import the TypeScript that owns it: Vercel's Neon integration prefixes the

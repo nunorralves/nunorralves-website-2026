@@ -1,3 +1,4 @@
+import { KIND_COLORS, dayNumber, type AnnotationKind } from "lib/analytics/annotations";
 import { formatBucket, formatCount } from "lib/analytics/format";
 
 // Hand-written SVG, rendered on the server, no library.
@@ -14,10 +15,19 @@ import { formatBucket, formatCount } from "lib/analytics/format";
 
 export type ChartPoint = { bucket: string; value: number };
 
+/** A timeline annotation, reduced to what drawing it needs. */
+export type ChartMarker = {
+  /** YYYY-MM-DD, the day the thing happened. */
+  at: string;
+  kind: AnnotationKind;
+  label: string;
+};
+
 type AreaChartProps = {
   points: ChartPoint[];
   grain: string;
   label: string;
+  markers?: ChartMarker[];
 };
 
 // A fixed user-space viewBox scaled to whatever width the container has.
@@ -39,7 +49,44 @@ function scale(points: ChartPoint[]) {
   };
 }
 
-export default function AreaChart({ points, grain, label }: AreaChartProps) {
+/**
+ * Where a marker sits along the axis, as a fractional bucket index.
+ *
+ * A day-grain chart has one bucket per day and this is exact. A week or month
+ * chart does not: the launch on the 21st falls inside the bucket starting on
+ * the 17th, and pinning it to the start of that bucket would draw it four days
+ * early, which on a chart whose entire job is to put a cause next to an effect
+ * is the one error that matters. So it interpolates between the two buckets it
+ * falls between.
+ *
+ * Null for anything outside the drawn range, which is not an error: the rail
+ * below lists markers for the range and the chart only draws the ones the axis
+ * can honestly place.
+ */
+function markerIndex(days: number[], at: string): number | null {
+  const day = dayNumber(at);
+  if (day === null || days.length === 0) return null;
+
+  const first = days[0]!;
+  const last = days[days.length - 1]!;
+  if (day < first || day > last) return null;
+
+  for (let i = days.length - 1; i >= 0; i -= 1) {
+    const start = days[i]!;
+    if (day < start) continue;
+    const next = days[i + 1];
+    if (next === undefined || next === start) return i;
+    return i + (day - start) / (next - start);
+  }
+  return null;
+}
+
+export default function AreaChart({
+  points,
+  grain,
+  label,
+  markers = [],
+}: AreaChartProps) {
   if (points.length === 0) {
     return (
       <p className='py-10 text-center text-sm text-[var(--color-secondary)]'>
@@ -61,6 +108,20 @@ export default function AreaChart({ points, grain, label }: AreaChartProps) {
 
   const last = series[series.length - 1]!;
   const gridRows = 3;
+
+  // Positions resolved once, and markers the axis cannot place are dropped
+  // rather than clamped to an edge. A marker pinned to the left edge because
+  // it predates the window would be read as "this happened at the start of
+  // this chart", which is a claim the data does not make.
+  const bucketDays = series
+    .map((point) => dayNumber(point.bucket))
+    .map((day) => day ?? 0);
+  const placed = markers
+    .map((marker) => ({ marker, index: markerIndex(bucketDays, marker.at) }))
+    .filter(
+      (entry): entry is { marker: ChartMarker; index: number } =>
+        entry.index !== null,
+    );
 
   return (
     <figure className='m-0'>
@@ -102,6 +163,37 @@ export default function AreaChart({ points, grain, label }: AreaChartProps) {
           strokeLinejoin='round'
           vectorEffect='non-scaling-stroke'
         />
+
+        {/* Annotation markers, drawn over the area and under the hit areas so
+            the browser's own tooltip still names the bucket beneath them. A
+            dashed line rather than a solid one, and a small pin rather than a
+            label: at four or five markers the labels overlap into mush, so the
+            names live in the rail underneath where they have room. */}
+        {placed.map(({ marker, index }) => {
+          const mx = x(index);
+          const color = KIND_COLORS[marker.kind];
+          return (
+            <g key={`${marker.at}-${marker.label}`}>
+              <line
+                x1={mx}
+                y1={PAD + 12}
+                x2={mx}
+                y2={H - PAD}
+                stroke={color}
+                strokeWidth={1}
+                strokeDasharray='2 3'
+                opacity={0.85}
+                vectorEffect='non-scaling-stroke'
+              />
+              <polygon
+                points={`${(mx - 4).toFixed(1)},${PAD + 4} ${(mx + 4).toFixed(1)},${PAD + 4} ${mx.toFixed(1)},${PAD + 11}`}
+                fill={color}
+              >
+                <title>{`${marker.at}: ${marker.label}`}</title>
+              </polygon>
+            </g>
+          );
+        })}
 
         {/* One invisible full height rect per bucket, purely so the browser's
             own tooltip can name the value under the cursor. This is the whole

@@ -42,6 +42,18 @@
   --color-tag: var(--border);
   --color-link: #61afef;
   --color-link-hover: #84c0f5;
+
+  /* Timeline marker colours, one per annotation kind. The palette had no
+     categorical colours at all, because nothing on the public site ranks or
+     classifies anything - these exist only for /insights, where a marker's
+     colour is the whole of how you tell a launch from a post at a glance.
+     Taken from the same One Dark family as --color-link so they sit together.
+     See lib/analytics/annotations.ts, which names them. */
+  --color-ann-post: var(--color-link);
+  --color-ann-project: #98c379;
+  --color-ann-profile: #d19a66;
+  --color-ann-external: #e06c75;
+  --color-ann-note: var(--color-secondary);
 }
 
 .light {
@@ -62,6 +74,15 @@
   --color-tag: var(--border);
   --color-link: #0969da;
   --color-link-hover: #0550ae;
+
+  /* The same five, darkened for a light ground. A colour that reads well on
+     #17181a is unreadable on #fbfaf8, so these are chosen for contrast rather
+     than derived from the dark set. */
+  --color-ann-post: var(--color-link);
+  --color-ann-project: #4a7c3f;
+  --color-ann-profile: #a8620d;
+  --color-ann-external: #c0392f;
+  --color-ann-note: var(--color-secondary);
 }
 
 /* Real fallback stacks, not next/font's own metric-matched one: layout.tsx

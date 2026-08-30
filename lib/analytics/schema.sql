@@ -117,3 +117,46 @@ create table if not exists daily_intent (
   count  integer not null,
   primary key (day, kind, target)
 );
+
+-- ---------------------------------------------------------------------------
+-- Source C: the timeline.
+--
+-- A spike is not information. "Visitors doubled on the 21st" is a fact with no
+-- use until something is standing next to it, and the thing standing next to
+-- it is almost always something I did: published a post, open sourced a
+-- project, changed a profile, got linked from somewhere. These rows are what
+-- turn the chart from a shape into an answer to "did that work".
+--
+-- Two sources, and the split is the whole design. `content` rows are derived
+-- from post and project frontmatter on every nightly run, so they need no
+-- manual step and backfill instantly for everything already written. `manual`
+-- rows are the ones only I know about, added from the dashboard.
+-- ---------------------------------------------------------------------------
+
+create table if not exists annotations (
+  id           bigserial   primary key,
+  -- A date, not a timestamp. Everything this is compared against is a daily
+  -- bucket, so an hour would be precision the rest of the pipeline cannot use.
+  at           date        not null,
+  kind         text        not null check (kind in ('post', 'project', 'profile', 'external', 'note')),
+  label        text        not null,
+  url          text,
+  source       text        not null check (source in ('content', 'manual')),
+  -- Stable identity for a content-derived row, e.g. 'post:2026-08-03-pi-extensions'.
+  -- This is what makes the nightly sync an upsert rather than an append: a
+  -- re-run finds the same key and updates in place, and an edited frontmatter
+  -- date moves the marker instead of leaving a second one behind. Null for
+  -- manual rows, which have no source of truth outside this table.
+  external_key text,
+  created_at   timestamptz not null default now()
+);
+
+-- Partial, because null is the normal case for manual rows and a plain unique
+-- index would still allow many nulls but would carry them for nothing. This is
+-- also the index the nightly upsert infers its conflict target from.
+create unique index if not exists annotations_external_key
+  on annotations (external_key)
+  where external_key is not null;
+
+-- The dashboard reads a date range, newest first, on every page load.
+create index if not exists annotations_at on annotations (at desc);

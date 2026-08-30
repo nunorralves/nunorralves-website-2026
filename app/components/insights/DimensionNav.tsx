@@ -11,6 +11,13 @@ export type NavItem = {
   label: string;
   /** The count beside the label, or null for a view that has no count. */
   count: string | null;
+  /**
+   * Somewhere other than a dimension view. Only the Timeline entry uses it, to
+   * jump to the editor further down the same page rather than swapping the
+   * table out: the timeline is not a way of slicing the traffic, it is the
+   * thing the traffic is sliced against.
+   */
+  href?: string;
 };
 
 export type NavGroup = { title: string; items: NavItem[] };
@@ -42,7 +49,7 @@ export default function DimensionNav({
             return (
               <Link
                 key={item.key}
-                href={`/insights?${query}&dim=${item.key}`}
+                href={item.href ?? `/insights?${query}&dim=${item.key}`}
                 aria-current={on ? "page" : undefined}
                 className={`flex items-center justify-between gap-2 border-l-2 px-4 py-[0.35rem] text-[0.82rem] transition-colors ${
                   on
