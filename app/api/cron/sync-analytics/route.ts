@@ -3,6 +3,7 @@ import { VERCEL_RETENTION_DAYS } from "lib/analytics/config";
 import { describeDatabaseUrlEnv, isDbConfigured } from "lib/analytics/db";
 import { rollupBeaconEvents } from "lib/analytics/rollup";
 import { syncFromVercel } from "lib/analytics/sync";
+import { missingVercelEnv } from "lib/analytics/vercel-api";
 
 // Nothing about this route is cacheable or prerenderable: it writes.
 export const dynamic = "force-dynamic";
@@ -64,6 +65,23 @@ export async function GET(request: Request) {
   if (!isDbConfigured()) {
     return NextResponse.json(
       { ok: false, error: `No usable database connection string. Found: ${describeDatabaseUrlEnv()}.` },
+      { status: 500 },
+    );
+  }
+
+  // Same idea one layer up. Without this the credentials check happens inside
+  // each of the twenty four queries, so a deployment that is missing them
+  // answers with twenty four identical errors and buries the one fact worth
+  // reading. Named together, and before any work, because both come from the
+  // same page of the Vercel dashboard and there is no reason to make you go
+  // back twice.
+  const missing = missingVercelEnv();
+  if (missing.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Not set in this environment: ${missing.join(", ")}. Add them in Project Settings -> Environment Variables. See .env.example.`,
+      },
       { status: 500 },
     );
   }

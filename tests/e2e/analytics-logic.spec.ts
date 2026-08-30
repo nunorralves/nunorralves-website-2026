@@ -12,6 +12,7 @@ import { GRAINS, VERCEL_RETENTION_DAYS } from '../../lib/analytics/config';
 import { databaseUrl, describeDatabaseUrlEnv } from '../../lib/analytics/db';
 import { toBucketString } from '../../lib/analytics/queries';
 import { windowFor } from '../../lib/analytics/sync';
+import { missingVercelEnv } from '../../lib/analytics/vercel-api';
 import { buildConclusion } from '../../lib/analytics/summary';
 import {
   formatDelta,
@@ -469,4 +470,22 @@ test('analytics logic: a delta needs something to compare against', () => {
 test('analytics logic: rate deltas are stated in percentage points', () => {
   expect(formatDeltaPoints(0.46, 0.49)).toBe('▼ 3.0pp');
   expect(formatDeltaPoints(0.46, null)).toBeNull();
+});
+
+// Both, or you fix one variable, redeploy, and get told about the other.
+test('analytics logic: missing Vercel credentials are reported together', () => {
+  withEnv({ VERCEL_PROJECT_ID: undefined, VERCEL_ANALYTICS_TOKEN: undefined }, () => {
+    expect(missingVercelEnv()).toEqual([
+      'VERCEL_PROJECT_ID',
+      'VERCEL_ANALYTICS_TOKEN',
+    ]);
+  });
+
+  withEnv({ VERCEL_PROJECT_ID: 'prj_1', VERCEL_ANALYTICS_TOKEN: undefined }, () => {
+    expect(missingVercelEnv()).toEqual(['VERCEL_ANALYTICS_TOKEN']);
+  });
+
+  withEnv({ VERCEL_PROJECT_ID: 'prj_1', VERCEL_ANALYTICS_TOKEN: 'tok' }, () => {
+    expect(missingVercelEnv()).toEqual([]);
+  });
 });
