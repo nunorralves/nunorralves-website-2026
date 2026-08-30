@@ -73,7 +73,7 @@ function sign(expiresAt: number): string {
 /**
  * Whether a cookie value was minted here and has not expired.
  *
- * Never throws. This runs in middleware on every request to /insights, and a
+ * Never throws. This runs in the proxy on every request to /insights, and a
  * missing secret or a mangled cookie has to read as "not signed in" rather
  * than as a 500 on a route whose whole job is to be private.
  */

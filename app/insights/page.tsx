@@ -39,14 +39,14 @@ import { buildConclusion } from "lib/analytics/summary";
 
 // force-dynamic, and it has to be. Every figure below comes from a database
 // that CI has never heard of, so a prerender would either bake in one night's
-// numbers or, without DATABASE_URL, take the build down. The middleware makes
+// numbers or, without DATABASE_URL, take the build down. The proxy makes
 // this route a redirect for anyone without a cookie anyway, which is not
 // something a static page can be.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Insights",
-  // Belt and braces with the X-Robots-Tag the middleware sets and the
+  // Belt and braces with the X-Robots-Tag the proxy sets and the
   // Disallow in robots.txt. Three cheap statements of the same thing, because
   // the failure mode is my traffic numbers turning up in a search result.
   robots: { index: false, follow: false },
@@ -151,18 +151,32 @@ export default async function InsightsPage({
     // A dashboard that throws a stack trace at me is less useful than one that
     // says which query died. This is the only reader, so the message is the
     // real message rather than a sanitised one.
+    //
+    // 42P01 is Postgres for "no such table", and it has exactly one cause
+    // here: the connection works but schema.sql has never been applied. That
+    // is a setup step with a command behind it, not a fault, so it gets an
+    // answer rather than the raw error.
+    const missingSchema = (error as { code?: string }).code === "42P01";
     return (
       <Shell
         preset={custom ? null : preset}
         view={view}
         custom={custom}
         rangeQuery={rangeQuery}
-        syncedNote='read failed'
+        syncedNote={missingSchema ? "no schema" : "read failed"}
         nav={emptyNav()}
       >
         <Notice
-          title='The read failed'
-          body={(error as Error).message}
+          title={
+            missingSchema
+              ? "The database is reachable, but empty"
+              : "The read failed"
+          }
+          body={
+            missingSchema
+              ? "None of the analytics tables exist yet. Run npm run analytics:backfill, which applies lib/analytics/schema.sql and then pulls everything Vercel still holds."
+              : (error as Error).message
+          }
         />
       </Shell>
     );

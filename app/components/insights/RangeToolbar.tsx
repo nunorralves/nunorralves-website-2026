@@ -99,9 +99,23 @@ export default function RangeToolbar({
         </form>
       </div>
 
-      <span className='font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[var(--color-secondary)]'>
-        {syncedNote}
-      </span>
+      <div className='flex items-center gap-3'>
+        <span className='font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[var(--color-secondary)]'>
+          {syncedNote}
+        </span>
+
+        {/* A form, not a link. Signing out changes state, and a GET that
+            changes state gets fetched by prefetchers and link previews, which
+            is a silly way to lose a session. */}
+        <form action='/api/insights/logout' method='post'>
+          <button
+            type='submit'
+            className='rounded-md border border-[var(--color-border)] px-2 py-1 font-mono text-[0.65rem] text-[var(--color-secondary)] transition-colors hover:border-[var(--color-link)] hover:text-[var(--color-link)]'
+          >
+            Sign out
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

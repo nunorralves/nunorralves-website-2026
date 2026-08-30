@@ -67,6 +67,23 @@ test('insights: a wrong password is refused', async ({ page }) => {
   await expect(page.getByText('That is not the password.')).toBeVisible();
 });
 
+// Deliberately not driven through a real session: ANALYTICS_PASSWORD is set
+// locally and absent in CI, and a test that only runs on one of those is not a
+// test. The contract worth pinning is the response itself.
+test('insights: signing out clears the session cookie', async ({ request }) => {
+  const res = await request.post('/api/insights/logout', { maxRedirects: 0 });
+
+  expect(res.status()).toBe(303);
+  expect(res.headers()['location']).toContain('/insights/login');
+
+  // Max-Age=0 on the same path the login route wrote. Every scoping attribute
+  // has to match or the browser stores a second cookie and keeps the first.
+  const setCookie = res.headers()['set-cookie'] ?? '';
+  expect(setCookie).toContain('insights_session=');
+  expect(setCookie).toMatch(/Max-Age=0/i);
+  expect(setCookie).toContain('Path=/insights');
+});
+
 test('insights: robots.txt disallows it', async ({ request }) => {
   const res = await request.get('/robots.txt');
   expect(res.status()).toBe(200);

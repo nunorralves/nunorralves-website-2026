@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-// Belt and braces with the X-Robots-Tag the middleware sets. The header is the
+// Belt and braces with the X-Robots-Tag the proxy sets. The header is the
 // one that counts, since it applies to a page fetched despite robots.txt, but
 // a crawler that only reads the HTML gets the same answer here.
 export const metadata: Metadata = {

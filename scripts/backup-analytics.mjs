@@ -65,7 +65,10 @@ async function backup() {
   for (const table of Object.keys(TABLES)) {
     // Table names come from the constant above, never from input, so the
     // interpolation here cannot be turned into an injection.
-    const rows = await sql(`select * from ${table} order by 1, 2`);
+    //
+    // sql.query, not sql(). Since @neondatabase/serverless 1.x the bare call
+    // form is reserved for tagged templates and throws on a plain string.
+    const rows = await sql.query(`select * from ${table} order by 1, 2`);
     dump.tables[table] = rows;
     total += rows.length;
     console.log(`  ${table.padEnd(24)} ${String(rows.length).padStart(7)} rows`);
@@ -101,7 +104,7 @@ async function restore(file) {
     for (const row of rows) {
       const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
       const setters = updatable.map((c) => `${c} = excluded.${c}`).join(", ");
-      await sql(
+      await sql.query(
         `insert into ${table} (${columns.join(", ")}) values (${placeholders})
          on conflict (${keys.join(", ")}) do update set ${setters}`,
         columns.map((c) => row[c]),

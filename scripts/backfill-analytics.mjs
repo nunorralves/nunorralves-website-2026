@@ -79,8 +79,11 @@ async function applySchema() {
 
   console.log(`Applying schema: ${statements.length} statements`);
   for (const statement of statements) {
-    // The statements come from a file in this repository, never from input.
-    await sql(statement);
+    // sql.query, not sql(). Since @neondatabase/serverless 1.x the bare call
+    // form is reserved for tagged templates and throws on a plain string, so
+    // anything with no interpolation to do has to go through .query. The
+    // statements come from a file in this repository, never from input.
+    await sql.query(statement);
   }
   console.log("  every create is IF NOT EXISTS, so nothing was dropped\n");
 }
@@ -143,7 +146,7 @@ async function backfill() {
 
 /** What actually landed, read straight back out of the database. */
 async function report() {
-  const totals = await sql(`
+  const totals = await sql.query(`
     select grain, count(*) as buckets, min(bucket) as first, max(bucket) as last,
            sum(pageviews) as pageviews
     from vercel_totals group by grain order by grain
@@ -163,7 +166,7 @@ async function report() {
     );
   }
 
-  const breakdown = await sql(
+  const breakdown = await sql.query(
     `select dimension, count(*) as rows from vercel_breakdown group by dimension order by dimension`,
   );
   if (breakdown.length > 0) {

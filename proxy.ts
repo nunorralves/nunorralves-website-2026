@@ -1,17 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "lib/analytics/auth";
 
-// The first middleware in this repository, and it exists for exactly one
-// route. Everything else on the site is public and static, so the matcher is
-// kept as narrow as it can be: middleware that runs on every request is a
-// tax on every page, and none of the others need it.
+// The first proxy in this repository, and it exists for exactly one route.
+// Everything else on the site is public and static, so the matcher is kept as
+// narrow as it can be: code that runs on every request is a tax on every page,
+// and none of the others need it.
+//
+// This was middleware.ts until Next 16 deprecated that convention. The rename
+// is not cosmetic: a proxy always runs on the Node runtime, so the explicit
+// `runtime: "nodejs"` that middleware.ts needed is now not merely unnecessary
+// but rejected outright at build time. That runtime is what lets this share
+// lib/analytics/auth.ts, which signs with node:crypto, rather than keeping a
+// second Web Crypto implementation of the one piece of code that must never
+// disagree with itself.
 export const config = {
   matcher: "/insights/:path*",
-  // Node, not the default edge runtime. lib/analytics/auth.ts signs with
-  // node:crypto, which the edge runtime does not provide, and reimplementing
-  // the same HMAC against Web Crypto would mean two copies of the one piece
-  // of code that must never disagree with itself.
-  runtime: "nodejs",
 };
 
 // noindex on the response as well as in robots.txt. robots.txt is a request
@@ -23,7 +26,7 @@ function sealed(response: NextResponse): NextResponse {
   return response;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // The login page is inside the matcher, and has to be, or its response would

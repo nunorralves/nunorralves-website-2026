@@ -96,7 +96,7 @@ export async function POST(request: Request) {
   if (!form) return back(request, { error: "1" });
 
   const password = form.get("password");
-  // Where the visitor was originally headed, handed back by the middleware.
+  // Where the visitor was originally headed, handed back by the proxy.
   // Only same-site paths under /insights are honoured: anything else, and this
   // becomes an open redirect that any phishing page could point at.
   const requested = form.get("next");
