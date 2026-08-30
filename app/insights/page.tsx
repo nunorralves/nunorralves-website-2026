@@ -583,10 +583,14 @@ async function load(
     queries.fetchRecentAnnotations(),
     queries.fetchAnnotationCount(),
     // Two spans from one query shape. The range-bound one is the toolbar's
-    // "this is what is behind the numbers you are looking at"; the absolute
-    // one is what decides whether a marker has a baseline at all.
-    queries.fetchDaySpan(range),
-    queries.fetchDaySpan(),
+    // "this is what is behind the numbers you are looking at", asked at the
+    // grain the chart is actually drawing: ask the day rows while the chart
+    // shows months and the answer describes Vercel's 31 day retention window
+    // rather than the history behind the figures. The absolute one is day
+    // grain on purpose, because it decides whether a marker has a baseline,
+    // and a baseline needs daily detail.
+    queries.fetchSpan(grain, range),
+    queries.fetchSpan("day"),
   ]);
 
   // The selected dimension, unless it is one of the two already fetched above.

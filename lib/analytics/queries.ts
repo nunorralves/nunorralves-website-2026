@@ -513,36 +513,73 @@ export async function fetchDailyPageviews(
   );
 }
 
-export type DaySpan = { first: string | null; last: string | null };
+export type StoredSpan = { first: string | null; last: string | null };
+
+/** How long one bucket of each grain lasts, as Postgres reads an interval. */
+const PERIOD: Record<Grain, string> = {
+  day: "1 day",
+  week: "7 days",
+  month: "1 month",
+};
 
 /**
- * The oldest and newest day the mirror actually holds.
+ * The oldest and newest day covered by the buckets of one grain.
  *
- * Two callers, asking two different questions with the same query. The toolbar
- * passes the selected range and gets "this is what is behind the numbers you
- * are looking at", which is not the same as the range you asked for: a 12
- * month window on a mirror that started in February covers seven months of
- * nothing, and the chart cannot say so on its own. The lift calculation passes
- * nothing and gets the absolute span, which is what decides whether a marker
- * has a baseline at all.
+ * Covered, not stored, and the difference is the whole point. A bucket carries
+ * the date it starts on, so the month row for July is stored as 2026-07-01 and
+ * the week row for the last full week of July as 2026-07-27, while both of
+ * them account for days either side of those dates. Reading the stored dates
+ * back as a span under-reports the history by up to a month.
  *
- * Day grain, because every grain is synced from the same window and the day
- * rows are the finest statement of where the history starts and stops.
+ * The grain matters just as much, and this is what the toolbar was getting
+ * wrong. Vercel's plan serves the last 31 days at day granularity and no more,
+ * so the day rows begin on 31 July however long the site has been up - but a
+ * month query whose window touches July comes back with the whole of July, all
+ * 2,553 page views of it. Asking the day rows how far back the mirror goes
+ * while the chart is drawing months answered a question nobody asked and
+ * quietly shrank two months of history into one.
+ *
+ * The far end is clamped to the range because the newest bucket is nearly
+ * always still filling: on the 30th the August month row is twenty nine days
+ * of data, and saying it covers up to the 31st claims a day that has not
+ * happened.
+ *
+ * Two callers. The toolbar passes the drawn grain and the selected range and
+ * gets "this is what is behind the numbers you are looking at", which is not
+ * the range that was asked for. The lift calculation passes day grain and no
+ * range and gets the absolute span, because a before-and-after around a marker
+ * needs daily detail or it has no baseline at all.
  */
-export async function fetchDaySpan(range?: DateRange): Promise<DaySpan> {
+export async function fetchSpan(
+  grain: Grain,
+  range?: DateRange,
+): Promise<StoredSpan> {
   const sql = getSql();
+
+  // The last day a bucket accounts for is one period on, less a day, and
+  // saying it that way covers all three grains with a single parameter and no
+  // CASE. Postgres does the arithmetic on the `date` the column already is:
+  // the same sum in JavaScript would go through a Date, and a Date is what
+  // turns 2026-08-01 into the 31st of July anywhere west of UTC.
+  const period = PERIOD[grain];
+
   const rows = asRows(
     range
       ? await sql`
-          select min(bucket)::text as first, max(bucket)::text as last
+          select min(bucket)::text as first,
+                 least(
+                   max(bucket) + ${period}::interval - interval '1 day',
+                   ${bounds(range)[1]}::date
+                 )::date::text as last
           from vercel_totals
-          where grain = 'day'
+          where grain = ${grain}
             and bucket >= ${bounds(range)[0]} and bucket <= ${bounds(range)[1]}
         `
       : await sql`
-          select min(bucket)::text as first, max(bucket)::text as last
+          select min(bucket)::text as first,
+                 (max(bucket) + ${period}::interval - interval '1 day')::date::text as last
           from vercel_totals
-          where grain = 'day'
+          where grain = ${grain}
         `,
   );
   const row = rows[0] ?? {};
