@@ -34,6 +34,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the checked-in template, which the blanket rule above would
+# otherwise swallow. It must never contain real values.
+!.env.example
 
 # vercel
 .vercel
