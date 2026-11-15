@@ -5,7 +5,7 @@ import { ABOUT_URL, personJsonLd } from "lib/person";
 
 const title = "About Nuno Alves";
 const description =
-  "Nuno Alves, engineering leader. VP Platform Engineering at Nextlane, after twenty-five years in software and twenty leading teams. What I build outside work, and what this site is for.";
+  "Nuno Alves, engineering leader. VP Platform Engineering at Nextlane, after twenty-five years in software, more than twenty of them leading teams. What I build outside work, and what this site is for.";
 
 // A full title rather than a bare "About": the root layout has no title
 // template, so a one-word title is all a tab or a search result would show,
@@ -41,8 +41,8 @@ export default function AboutPage() {
             a job change untouched. */}
         <p className='mb-10 text-lg'>
           I am Nuno Alves, an engineering leader. Twenty-five years in software,
-          twenty of them leading teams, from embedded systems through carrier
-          grade network software to cloud platforms.
+          more than twenty of them leading teams, from embedded systems through
+          carrier grade network software to cloud platforms.
         </p>
 
         {/* Deliberately short. LinkedIn is the claim and this site is the

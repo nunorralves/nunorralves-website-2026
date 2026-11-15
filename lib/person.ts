@@ -51,7 +51,7 @@ export const personJsonLd = {
     url: "https://www.nextlane.com",
   },
   description:
-    "Engineering leader with twenty-five years in software and twenty leading teams, from embedded systems at Siemens through network software at Nokia Siemens Networks, Coriant and Infinera, then platform and IAM at Talkdesk, then identity verification at Onfido and Entrust, and now VP Platform Engineering at Nextlane, in automotive software.",
+    "Engineering leader with twenty-five years in software, more than twenty of them leading teams, from embedded systems at Siemens through network software at Nokia Siemens Networks, Coriant and Infinera, then platform and IAM at Talkdesk, then identity verification at Onfido and Entrust, and now VP Platform Engineering at Nextlane, in automotive software.",
   knowsAbout: [
     "Platform engineering",
     "Engineering leadership",
