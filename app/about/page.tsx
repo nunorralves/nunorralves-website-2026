@@ -5,7 +5,7 @@ import { ABOUT_URL, personJsonLd } from "lib/person";
 
 const title = "About Nuno Alves";
 const description =
-  "Nuno Alves, engineering leader. Platform engineering at Nextlane, merging acquired automotive platforms into one, after twenty-five years in software and twenty leading teams. What I build outside work, and what this site is for.";
+  "Nuno Alves, engineering leader. VP Platform Engineering at Nextlane, after twenty-five years in software and twenty leading teams. What I build outside work, and what this site is for.";
 
 // A full title rather than a bare "About": the root layout has no title
 // template, so a one-word title is all a tab or a search result would show,
@@ -53,13 +53,9 @@ export default function AboutPage() {
         <section className='mb-12'>
           <h2 className='text-xl font-semibold mb-4'>What I do now</h2>
           <p className='mb-4 font-normal'>
-            I run Platform engineering at Nextlane, in automotive software:
-            dealer management, CRM and accounting for car dealerships. It grew
-            out of more than ten acquired companies, so platform there means
-            bringing their systems onto one, built around a single data model,
-            without breaking what already runs on them. Day to day: the API
-            gateways, the carmaker integrations, and AI in how we build
-            software.
+            I run Platform engineering at Nextlane, in automotive software.
+            Platform there means the layer everyone else builds on, and making
+            it one layer rather than several.
           </p>
           <p className='font-normal'>
             The job has not changed much in ten years, only the altitude. It

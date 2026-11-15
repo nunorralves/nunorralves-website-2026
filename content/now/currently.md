@@ -14,9 +14,7 @@ reviewed: 2026-11-15
 fields:
   - label: At work
     value: >-
-      Platform at Nextlane, automotive software. The API gateways, the
-      carmaker integrations, and the one platform more than ten acquired ones
-      converge on.
+      VP Platform Engineering at Nextlane, in automotive software.
   - label: Thinking about
     value: >-
       Where agentic systems belong in a platform org, and what determinism they
