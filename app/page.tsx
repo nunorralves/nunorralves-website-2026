@@ -65,15 +65,15 @@ export default async function Home() {
             </p>
             <p className='mb-6 pt-4 border-t border-[var(--color-border)] font-normal text-[var(--color-secondary)]'>
               Engineering leader. Twenty-five years in software, twenty of
-              them leading teams, currently Senior Director of Engineering,
-              Platform at Entrust in identity verification.
+              them leading teams, currently VP Platform Engineering at
+              Nextlane in automotive software.
             </p>
             <p className='mb-6'>
               <Link
                 href='/about'
                 className='text-[var(--color-link)] hover:text-[var(--color-link-hover)] transition-colors'
               >
-                More about me and how I got here
+                More about me
               </Link>
             </p>
             <div className='pt-2'>

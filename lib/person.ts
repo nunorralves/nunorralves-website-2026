@@ -44,18 +44,19 @@ export const personJsonLd = {
   alternateName: "Nuno R. Alves",
   url: ABOUT_URL,
   mainEntityOfPage: ABOUT_URL,
-  jobTitle: "Senior Director of Engineering, Platform",
+  jobTitle: "VP Platform Engineering",
   worksFor: {
     "@type": "Organization",
-    name: "Entrust",
-    url: "https://www.entrust.com",
+    name: "Nextlane",
+    url: "https://www.nextlane.com",
   },
   description:
-    "Engineering leader with twenty-five years in software and twenty leading teams, from embedded systems at Siemens through network software at Nokia Siemens Networks, Coriant and Infinera, then platform and IAM at Talkdesk, then identity verification at Onfido and Entrust.",
+    "Engineering leader with twenty-five years in software and twenty leading teams, from embedded systems at Siemens through network software at Nokia Siemens Networks, Coriant and Infinera, then platform and IAM at Talkdesk, then identity verification at Onfido and Entrust, and now VP Platform Engineering at Nextlane, in automotive software.",
   knowsAbout: [
     "Platform engineering",
     "Engineering leadership",
     "Identity verification",
+    "Automotive software",
     "Distributed systems",
     "AI coding agents",
   ],

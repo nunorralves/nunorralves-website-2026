@@ -7,15 +7,16 @@
 # you changed anything. The date certifies that someone looked, not that
 # something moved. tests/e2e/now-freshness.spec.ts fails the build once it is
 # more than 90 days old.
-reviewed: 2026-08-28
+reviewed: 2026-11-15
 
 # Ordered by how durable each one is: the job changes rarely, what I am
 # thinking about drifts over quarters, what I am building turns over fastest.
 fields:
   - label: At work
     value: >-
-      Platform at Entrust, identity verification. Workflow orchestration, the
-      public APIs, and the reliability work nobody notices until it is missing.
+      Platform at Nextlane, automotive software. The API gateways, the
+      carmaker integrations, and the one platform more than ten acquired ones
+      converge on.
   - label: Thinking about
     value: >-
       Where agentic systems belong in a platform org, and what determinism they
